@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Dinosaur Age — Detail</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#060811;--surface:#0d1424;--surface2:#14203a;--gold:#d4a843;--gold2:#f0c060;--text:#e8e0d0;--muted:#8899aa}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+#app{max-width:680px;margin:0 auto;padding:0 0 60px}
+
+/* Header */
+.top-bar{display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid rgba(212,168,67,.2);position:sticky;top:0;background:var(--bg);z-index:10}
+.back-btn{display:flex;align-items:center;gap:6px;color:var(--gold);text-decoration:none;font-size:.8rem;font-weight:600;letter-spacing:.04em;padding:6px 12px;border:1px solid rgba(212,168,67,.3);border-radius:20px;background:rgba(212,168,67,.08)}
+.back-btn:active{opacity:.7}
+.top-title{font-size:.75rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;flex:1;text-align:center}
+
+/* Hero image */
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+.hero{position:relative;width:100%;height:260px;overflow:hidden;background:var(--surface)}
+.hero.loading{background:linear-gradient(90deg,var(--surface) 25%,rgba(255,255,255,.06) 50%,var(--surface) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite}
+.hero img{width:100%;height:100%;object-fit:cover;object-position:center top;display:block;transition:opacity .35s}
+.hero.loading img{opacity:0}
+.hero-overlay{position:absolute;inset:0;background:linear-gradient(0deg,var(--bg) 0%,rgba(6,8,17,.45) 55%,transparent 100%)}
+.hero-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:4rem;background:var(--surface)}
+
+/* Event header */
+.event-header{padding:20px 20px 0}
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:4px 10px;border-radius:20px;margin-bottom:10px}
+.event-icon{font-size:2rem;margin-bottom:8px}
+.event-title{font-size:1.6rem;font-weight:800;line-height:1.1;margin-bottom:4px}
+.event-sub{font-size:.85rem;color:var(--muted);margin-bottom:16px}
+
+/* Image caption */
+.img-caption{padding:6px 20px;font-size:.65rem;color:var(--muted);font-style:italic;border-left:2px solid rgba(212,168,67,.3);margin:0 20px 16px}
+
+/* Body */
+.body-text{padding:0 20px;font-size:.9rem;line-height:1.75;color:rgba(232,224,208,.9);margin-bottom:24px}
+.body-text p{margin-bottom:14px}
+
+/* Quote block */
+.book-quote{margin:20px;padding:16px 18px;background:rgba(212,168,67,.06);border-left:3px solid var(--gold);border-radius:0 8px 8px 0}
+.book-quote p{font-size:.85rem;line-height:1.65;color:rgba(232,224,208,.85);font-style:italic;margin-bottom:8px}
+.book-quote cite{font-size:.7rem;color:var(--gold);font-style:normal;font-weight:600}
+
+/* Facts */
+.facts-section{margin:0 20px 20px;background:rgba(212,168,67,.05);border:1px solid rgba(212,168,67,.15);border-radius:12px;padding:16px}
+.facts-title{font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin-bottom:12px}
+.fact-item{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;font-size:.82rem;color:rgba(232,224,208,.8);line-height:1.45}
+.fact-dot{width:6px;height:6px;border-radius:50%;background:var(--gold);margin-top:5px;flex:0 0 auto}
+
+/* More events nav */
+.more-title{padding:0 20px;font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+.more-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 20px}
+.more-card{background:var(--surface);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:16px;cursor:pointer;transition:.15s;text-decoration:none;display:block;min-height:88px;touch-action:manipulation}
+.more-card:active{opacity:.65;transform:scale(.97)}
+.more-card-icon{font-size:1.8rem;margin-bottom:6px}
+.more-card-name{font-size:.8rem;font-weight:600;color:var(--text);line-height:1.25}
+.more-card-date{font-size:.68rem;color:var(--muted);margin-top:3px}
+
+/* Source */
+.source-note{margin:24px 20px 0;padding:12px;background:rgba(255,255,255,.03);border-radius:8px;font-size:.68rem;color:var(--muted);line-height:1.5}
+.source-note strong{color:var(--gold2)}
+
+/* Loading */
+#loading{display:flex;align-items:center;justify-content:center;height:60vh;flex-direction:column;gap:12px;color:var(--muted);font-size:.85rem}
+#not-found{display:none;padding:40px 20px;text-align:center;color:var(--muted)}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="loading">
+    <span style="font-size:2rem">🦕</span>
+    Loading...
+  </div>
+  <div id="not-found">
+    <p>Event not found. <a href="dinosaur-age-mobile.html" style="color:var(--gold)">Back to timeline</a></p>
+  </div>
+</div>
+
+<script>
+// ── Event data ────────────────────────────────────────────────────────────────
+const EVENTS = {
+'great-dying': {
+  icon:'🌋', badge:'252 Million Years Ago', badgeColor:'#ff4444',
+  title:'The Great Dying',
+  sub:'Permian–Triassic Mass Extinction',
+  image:'https://commons.wikimedia.org/wiki/Special:FilePath/Flood_Basalt_Map.jpg?width=800',
+  imgCaption:'The Siberian Traps — volcanic fissures stretching across a continent-sized area of Russia that drove the end-Permian extinction. (Wikimedia Commons)',
+  body:[
+    'At 252 million years ago, life nearly ended. Deep beneath Siberia, a massive hot spot formed in the mantle — liquid rock that snaked upward and burst through cracks in the crust. Unlike the cone-shaped volcanoes we picture today, these were simply long gashes in the Earth\'s surface, sometimes miles long, that poured out lava continuously for hundreds of thousands of years.',
+    'The Siberian Traps eruptions expelled enough lava to bury an area the size of Western Europe hundreds of feet deep. But the lava wasn\'t the worst of it. Carbon dioxide and sulfur dioxide poured into the atmosphere. CO₂ triggered a runaway greenhouse effect that boiled the planet. Sulfur dioxide formed acid rain. Dust blocked the sun, collapsing photosynthesis and destroying food chains from the bottom up.',
+    'The oceans acidified and lost their oxygen. Marine animals with calcium carbonate shells dissolved. On land, the gorgonopsians — bear-sized predators with sabre teeth — vanished. The dicynodonts, the pareiasaurs, the amphibians that had ruled the world: gone. Somewhere around 90 to 96 percent of all species on Earth were annihilated. It is the closest life has ever come to complete obliteration.',
+    'Recovery took at least five million years. When it came, the world was irrevocably different. The dominant animals were gone. An empty planet waited. The stage was set for the dinosaurs.'
+  ],
+  quote: '"Rocks record history; they tell stories of deep ancient pasts long before humans walked the Earth. The narrative in front of us…documents one of the most dramatic moments in Earth history. A brief instance when the world changed, a turning point that happened some 252 million years ago."',
+  facts:[
+    'Siberian Traps eruptions lasted for hundreds of thousands to millions of years — not a single event but a prolonged catastrophe',
+    'Ocean oxygen levels dropped so dramatically that many seafloor zones became completely anoxic (oxygen-free)',
+    'Up to 96% of marine species and 70–75% of land vertebrate species went extinct',
+    'The dominant land animals before the extinction — gorgonopsians, dicynodonts, pareiasaurs — were never seen again',
+    'Full ecosystem recovery took approximately 5–10 million years, the longest of any mass extinction event'
+  ]
+},
+'dawn-triassic': {
+  icon:'🌅', badge:'247 Million Years Ago', badgeColor:'#e07040',
+  title:'Dawn of the Triassic',
+  sub:'The World Rebuilds After Extinction',
+  image:'https://commons.wikimedia.org/wiki/Special:FilePath/Lystrosaurus_BW.jpg?width=800',
+  imgCaption:'Lystrosaurus, a pig-like synapsid, dominated early Triassic land communities and accounted for over 90% of some fossil populations. (Wikimedia Commons)',
+  body:[
+    'After the Great Dying, the world was a haunted place. Vast stretches of barren landscape, empty seas, a sky still choked with volcanic haze. But life clung on. The survivors were the opportunists — small, fast-reproducing species that could tolerate the harsh conditions.',
+    'The most successful early Triassic survivor was Lystrosaurus, a sturdy, pig-like creature with a blunt face and two small tusks. It was a dicynodont, a group that had nearly been wiped out, but a handful of species made it through. Lystrosaurus proved extraordinarily adaptable, colonising every landmass on what was still the single supercontinent Pangaea. In some fossil beds it accounts for more than 90% of all vertebrate fossils — a sign of how thoroughly it dominated an ecosystem stripped of competitors.',
+    'The early Triassic seas were still hot and acidic, hostile to reef-building corals. The land was dotted with drought-tolerant ferns and hardy conifers. Archosaurs — the evolutionary branch that would later split into dinosaurs on one side and crocodiles on the other — were beginning to diversify.',
+    'Recovery was slow and unsteady. There were secondary crises, warm spikes, and ecological collapses within the first few million years. But with each million years that passed, the world grew richer. Slowly, the stage was being prepared for the greatest evolutionary radiation in vertebrate history.'
+  ],
+  quote: '"The volcanoes erupted for a few million years, and then they stopped as the hot spot lost steam. No longer blighted by lava, dust, and carbon dioxide, ecosystems were gradually able to stabilize."',
+  facts:[
+    'Lystrosaurus is found on every continent, evidence it survived on the single landmass of Pangaea and then spread everywhere',
+    'Early Triassic recovery was so slow that some researchers identify "Dead Zones" — periods of millions of years with almost no ecological diversity',
+    'The first true crocodile-line archosaurs and bird-line archosaurs (ancestors of dinosaurs) appear in this period',
+    'Sea surface temperatures in the early Triassic may have reached 40°C (104°F) near the equator — nearly too hot for complex marine life'
+  ]
+},
+'pangaea': {
+  icon:'🌍', badge:'237 Million Years Ago', badgeColor:'#e08840',
+  title:'Pangaea — One World',
+  sub:'The Supercontinent and the Megamonsoons',
+  image:'https://commons.wikimedia.org/wiki/Special:FilePath/Pangaea_continents.svg?width=800',
+  imgCaption:'Pangaea, the single supercontinent that all land animals shared during the Triassic. The letters mark the modern continents still glued together. (Wikimedia Commons)',
+  body:[
+    'When the very first dinosaurs evolved, about 240–230 million years ago, there were no individual continents — no Australia, no Americas, no Atlantic Ocean. There was one vast unbroken landmass from pole to pole: Pangaea, surrounded by a single global ocean called Panthalassa.',
+    'Pangaea shaped everything about early dinosaur life. The physical geography — enormous mountain ranges running at odd angles, vast interior deserts — meant that animals living on opposite ends of this single continent might as well have been on different planets. The climate was defined by megamonsoons: violent seasonal storms that alternated with months of severe drought, far more extreme than anything we experience today.',
+    'The equatorial belt of Pangaea was a scorching desert, with temperatures potentially reaching 70°C in summer — too hot for most life. But the midlatitudes, particularly in the southern hemisphere, were more temperate and humid. This is where the first dinosaurs lived: in river valleys and seasonal floodplains that received reliable rainfall.',
+    'The geography of Pangaea meant that the first dinosaurs were trapped. The vast deserts of the tropical belt acted as a barrier that kept them pinned to the southern humid zone for millions of years. They couldn\'t migrate north. They couldn\'t conquer the world — not yet.'
+  ],
+  quote: '"What I mean is, envision a version of Earth where all of the land is connected together — no patchwork of continents separated by oceans and seas, just a single expanse of dry ground stretching from pole to pole."',
+  facts:[
+    'Pangaea spanned an entire hemisphere and looked roughly like a large letter C from above',
+    'The interior of Pangaea was so far from any coast that it became one of the most extreme deserts in Earth history',
+    'Megamonsoons were global in scale, compared to today\'s regional monsoon systems in India and Southeast Asia',
+    'Because Pangaea connected the poles, there were no ice caps — even the Arctic was warm enough for dinosaurs',
+    'The breakup of Pangaea began around 200 million years ago and continued for over 100 million years, shaping modern continents'
+  ]
+},
+'first-dinosaurs': {
+  icon:'🦎', badge:'232 Million Years Ago', badgeColor:'#c86828',
+  title:'First Dinosaurs',
+  sub:'Ischigualasto — Cradle of the Dinosaurs',
+  image:'https://commons.wikimedia.org/wiki/Special:FilePath/Eoraptor_Skull_Sereno_1993.jpg?width=800',
+  imgCaption:'The skull of Eoraptor lunensis, one of the earliest known dinosaurs from the Ischigualasto Formation of Argentina. (Paul Sereno / Wikimedia Commons)',
+  body:[
+    'In a remote corner of northwestern Argentina, in rocks laid down 230–232 million years ago, paleontologists have found the oldest confirmed diverse dinosaur community on Earth. The Ischigualasto Formation — a landscape of purple and grey badlands baked by the sun — preserves a snapshot of the world when dinosaurs were just beginning.',
+    'The fossils are small and meek. Eoraptor lunensis ("dawn thief") was less than a metre long and weighed perhaps 10 kilograms — about the size of a golden retriever. It had an unusual set of teeth: serrated steak-knife teeth in the back for tearing flesh, but leaf-shaped teeth at the tip of the snout, suggesting it might have eaten plants as well as animals. Herrerasaurus was larger, a fierce predator reaching 3–4 metres in length.',
+    'These first dinosaurs were not world conquerors. They made up only about 10–20 percent of the animals in the Ischigualasto ecosystem. They were outnumbered by proto-mammals called dicynodonts, by rhynchosaurs with sharp plant-chopping beaks, and by enormous crocodile-line archosaurs like Saurosuchus, a 25-foot-long predator that was the true apex of the food chain. The dinosaurs were bit players in a world that hadn\'t yet decided they were the future.',
+    'But they had one crucial advantage: their upright posture. Unlike other reptiles that sprawled with limbs out to the side, dinosaurs walked with their legs directly under their bodies — far more energy-efficient for sustained movement. It\'s a small advantage, but over millions of years, small advantages compound into dominance.'
+  ],
+  quote: '"As a young student, I was in awe of [the Ischigualasto fossils]…The bones that have been pried from the rock are indeed historical artifacts, primary-source objects that help us tell the story of deep prehistoric pasts."',
+  facts:[
+    'Eoraptor lunensis was discovered in 1991 by a University of Chicago team led by Paul Sereno',
+    'The three major dinosaur groups — theropods, sauropodomorphs, and ornithischians — had already diverged from each other by the Ischigualasto period',
+    'Early dinosaurs were geographically confined to the humid midlatitudes of southern Pangaea; the desert belts blocked them from spreading north',
+    'Dinosaurs made up only 10–20% of vertebrate fauna in their earliest ecosystems — vastly outnumbered by other reptiles and proto-mammals',
+    'The upright gait of dinosaurs — legs directly under the body — gave them a lasting aerobic endurance advantage over competitors'
+  ]
+},
+'triassic-giants': {
+  icon:'🐊', badge:'220 Million Years Ago', badgeColor:'#c86828',
+  title:'Triassic Giants',
+  sub:'Metoposaurus and the Crocodile-line Rulers',
+  image:'https://commons.wikimedia.org/wiki/Special:FilePath/Metoposaurus_diagnosticus_kraselovi_1DB.jpg?width=800',
+  imgCaption:'Metoposaurus fossil specimen. This giant amphibian lurked in Triassic lakes across Pangaea, its coffee-table-wide skull filled with hundreds of teeth. (Wikimedia Commons)',
+  body:[
+    'The Triassic world teemed with animals that were not dinosaurs. When paleontologists excavated a bone bed in the Algarve region of Portugal, they found something extraordinary: hundreds of Metoposaurus specimens piled together, the victims of a Triassic drought that dried up their lake in an instant.',
+    'Metoposaurus was a giant amphibian, a distant relative of today\'s salamanders. It grew to the size of a small car. Its skull was roughly the size of a coffee table — flat, broad, hinged at the back, and studded with hundreds of piercing teeth that snapped shut like a toilet seat. If you were a small early dinosaur approaching the water\'s edge, Metoposaurus was waiting.',
+    'Sharing the Triassic waterways were phytosaurs — long-snouted archosaurs that looked almost exactly like modern crocodiles, one of the most striking cases of convergent evolution in Earth history. On land, the true rulers were the rauisuchians: powerful four-legged predators with erect posture, some reaching 25 feet in length. They were the lords of the Triassic world.',
+    'The dinosaurs were watching from the margins. Small, cautious, unable to compete directly with these established giants. Everything was about to change — but not because of anything the dinosaurs did. It would take another catastrophe to hand them the world.'
+  ],
+  quote: '"Giant amphibians like Metoposaurus were leading actors in the story of Triassic Pangea. If you were a frail little primitive dinosaur like Eoraptor, you would want to avoid the shorelines at all costs. It was enemy territory."',
+  facts:[
+    'The Metoposaurus bone bed in Portugal\'s Algarve contains hundreds of individuals who died when their lake dried up ~230 million years ago',
+    'Metoposaurus skulls can exceed 60 cm across — one of the widest heads relative to body size of any land vertebrate',
+    'Phytosaurs evolved a near-identical body plan to modern crocodiles independently — they are not closely related to crocodilians',
+    'Rauisuchians, not dinosaurs, occupied the apex predator niche throughout most of the Triassic',
+    'The first true crocodilians, turtles, and mammals also appeared during the Triassic alongside these more famous groups'
+  ]
+},
+'ghost-ranch': {
+  icon:'🦴', badge:'215 Million Years Ago', badgeColor:'#c86828',
+  title:'Ghost Ranch',
+  sub:'Coelophysis — Pack Hunter of the Late Triassic',
+  image:'https://commons.wikimedia.org/wiki/Special:FilePath/Coelophysis_bauri.jpg?width=800',
+  imgCaption:'Coelophysis bauri specimen from Ghost Ranch, New Mexico — one of thousands recovered from a single extraordinary bone bed. (Wikimedia Commons)',
+  body:[
+    'Ghost Ranch, New Mexico, sits in a landscape of breathtaking red and ochre cliffs, the kind of country that painter Georgia O\'Keeffe immortalised on canvas. Hidden in those cliffs, in rocks 215 million years old, lies one of the most spectacular dinosaur sites ever discovered: thousands of Coelophysis skeletons, piled on top of each other in a single catastrophic mass death.',
+    'What caused so many individuals to die together? The most likely explanation is a flash flood that swept through a river valley, drowning hundreds of animals and piling their bodies in a jam. Whatever the cause, the result was a paleontological gold mine — a site so rich in Coelophysis that it became the type specimen quarry for one of the best-understood early dinosaurs.',
+    'Coelophysis was built for speed. About 3 metres long but weighing only 20–25 kilograms, it had hollow bones (the name means "hollow form"), long slender legs, a flexible neck, and sharp recurved teeth. It was almost certainly warm-blooded and could sustain high activity levels for extended periods. Whether these animals hunted in groups is still debated, but the fossil evidence shows they died together — hundreds of them, all at once.',
+    'Some Ghost Ranch specimens appear to contain the bones of juvenile Coelophysis inside their ribcage. Whether these are unborn young or evidence of cannibalism remains controversial — but either possibility reveals an animal far more complex and "modern" in its behaviour than the early dinosaurs of Ischigualasto just 15 million years earlier.'
+  ],
+  quote: '"Coelophysis had hollow bones — an early precursor to the lightweight bird skeleton that would eventually enable flight."',
+  facts:[
+    'Ghost Ranch produced one of the largest single-species dinosaur bone beds ever found, with thousands of Coelophysis individuals',
+    'Coelophysis hollow bones (pneumatized skeleton) were an early version of the air-sac system later perfected in birds',
+    'The Ghost Ranch site was discovered in 1947 and excavated intensively from 1947–1948 by the American Museum of Natural History',
+    'Coelophysis is the state fossil of New Mexico',
+    'A Coelophysis skull was carried to the Mir Space Station in 1998, making it one of the few fossils to have gone to space'
+  ]
+},
+'end-triassic': {
+  icon:'🔥', badge:'201 Million Years Ago', badgeColor:'#ff4444',
+  title:'End-Triassic Extinction',
+  sub:'CAMP Eruptions Open the Door for Dinosaurs',
+  image:'https://commons.wikimedia.org/wiki/Special:FilePath/CAMP.png?width=800',
+  imgCaption:'The Central Atlantic Magmatic Province (CAMP) — the flood basalts that accompanied Pangaea\'s breakup and triggered the end-Triassic mass extinction. (Wikimedia Commons)',
+  body:[
+    'Just as the Siberian Traps had ended the Permian world 50 million years earlier, another catastrophic volcanic event ended the Triassic — and this time, the world that emerged on the other side would be ruled by dinosaurs.',
+    'As Pangaea began to fracture and pull apart — the opening of what would become the Atlantic Ocean — enormous volumes of lava flooded the areas around the rift zones. This is the Central Atlantic Magmatic Province, or CAMP: one of the largest volcanic events in the last 500 million years. The lava flows, still visible today as the diabase sills across the eastern United States, eastern Brazil, West Africa, and Iberia, were accompanied by massive releases of carbon dioxide.',
+    'The end-Triassic extinction killed at least 76% of all species. The casualties were striking: Metoposaurus, the giant amphibian that had terrorised Triassic lakeshores, was gone. Phytosaurs, which had occupied the crocodile ecological niche, vanished. Rauisuchians, the dominant predators, disappeared. The world that had resisted dinosaurs for 50 million years was swept clean.',
+    'The dinosaurs survived. Perhaps because they were already adapted to variable climates at the humid margins of Pangaea. Perhaps because they were smaller and more generalist than the large specialised creatures that died. Perhaps they were just lucky. But when the volcanic winter lifted and the world began to recover, only the dinosaurs were standing. And now, with no competition, they would not waste the opportunity.'
+  ],
+  quote: '"The dinosaurs survived. Perhaps because they were already adapted to harsh, variable climates at the Triassic margins, or simply because they were lucky. When the smoke cleared, the ecological stage was empty. Dinosaurs stepped into the vacancy and would never give it up."',
+  facts:[
+    'CAMP eruptions were among the most voluminous volcanic events in the Phanerozoic, covering over 11 million km² across four modern continents',
+    'The end-Triassic extinction eliminated at least 76% of species, including the dominant Triassic reptile groups',
+    'After the extinction, dinosaurs diversified from perhaps 10–20% of vertebrate communities to near-total dominance within a few million years',
+    'The event marks the boundary between the Triassic and Jurassic periods — visible as a distinct chemical signature in rocks worldwide',
+    'Crocodilians (not phytosaurs, which went extinct) survived and continue as the closest living relatives of dinosaurs, aside from birds'
+  ]
+},
+'jurassic-explosion': {
+  icon:'🌿', badge:'190 Million Years Ago', badgeColor:'#60a84a',
+  title:'The Jurassic Explosion',
+  sub:'Dinosaurs Inherit the Earth',
+  image:'https://commons.wikimedia.org/wiki/Special:FilePath/Diplodocus_Carnegii_skeleton_in_Museum_f%C3%BCr_Naturkunde_Berlin_0830.jpg?width=800',
+  imgCaption:'Diplodocus carnegii skeleton at the Carnegie Museum of Natural History — one of the iconic sauropods that came to dominate Jurassic landscapes. (Wikimedia Commons)',
+  body:[
+    'After the end-Triassic extinction, the world belonged to the dinosaurs. Within a few million years, they had diversified explosively — filling the ecological niches vacated by their dead competitors with a bewildering variety of new forms.',
+    'Long-necked prosauropods — forerunners of the great sauropods — spread across every landmass. Ornithischian dinosaurs began diversifying into a multitude of plant-eating body plans. Small agile theropods multiplied in every habitat from forests to river floodplains. For the first time, dinosaurs were everywhere, at every size, eating everything.',
+    'The world itself was transforming. Pangaea was pulling apart, creating new coastlines and shallow seas that flooded the interiors of the separating landmasses. As land connections broke and reformed, dinosaur populations became isolated, evolved independently, and produced new species at an accelerating rate. The conifer forests that had dominated Triassic landscapes were joined by a more diverse flora.',
+    'This was the dawn of the true Age of Dinosaurs. For the next 130 million years, they would dominate every terrestrial ecosystem on the planet, growing to sizes previously unimagined, evolving feathers and flight, and ultimately giving rise to 10,500 species of birds alive today.'
+  ],
+  quote: '"The fall of [the dominant Triassic species] gave the plant-eating primitive sauropod cousins an opportunity to seize a new niche in some ecosystems. Before long they were the main herbivores in the humid regions."',
+  facts:[
+    'Within 10 million years of the end-Triassic extinction, dinosaurs had colonised every continent and most ecological niches',
+    'Early Jurassic sauropodomorphs like Massospondylus (South Africa) and Plateosaurus (Europe) show rapid global dispersal',
+    'The breakup of Pangaea, beginning ~200 million years ago, accelerated dinosaur evolution by isolating populations',
+    'Jurassic conifer forests supported enormous sauropod herbivores; flowering plants (angiosperms) had not yet evolved',
+    'The first mammals and early lizards also diversified alongside dinosaurs in the Jurassic — but remained small and ecologically marginal'
+  ]
+},
+'age-of-giants': {
+  icon:'🦕', badge:'165 Million Years Ago', badgeColor:'#48b868',
+  title:'Age of Giants',
+  sub:'Sauropods — The Largest Land Animals in History',
+  image:'https://commons.wikimedia.org/wiki/Special:FilePath/Brachiosaurus_DB.jpg?width=800',
+  imgCaption:'The world\'s largest mounted sauropod skeleton, at the Field Museum of Natural History, Chicago. Sauropods were the largest land animals Earth has ever produced. (Wikimedia Commons)',
+  body:[
+    'The Middle and Late Jurassic witnessed something that will never be repeated: the evolution of land animals so large that they strain the imagination. The sauropods — the long-necked dinosaurs ancestrally related to primitive forms like Panphagia and Eoraptor — grew to sizes that challenge the limits of what biology can achieve on dry land.',
+    'Brachiosaurus, Diplodocus, Brontosaurus, Apatosaurus, Supersaurus — these were animals 25 to 33 metres long, weighing 30 to 70 metric tons or more. A Brachiosaurus neck alone could reach 9 metres. To reduce the weight of this extraordinary structure without sacrificing strength, sauropods evolved a system of air sacs that invaded their bones, making their skeleton effectively a foam-filled structure — a biological engineering solution later perfected in birds.',
+    'How did animals this large sustain themselves? Sauropods had remarkably efficient digestive systems and almost certainly ate almost continuously. Their long necks allowed them to sweep through large areas of vegetation without moving their body — an enormous energetic saving. Some species may have needed hundreds of kilograms of plant material per day.',
+    'The Jurassic sauropods were not just big — they were diverse. Different species specialised in different feeding heights, from ground-level ferns to the crowns of the tallest conifers. They migrated in herds, leaving trackways that are still visible today in Wyoming, Colorado, and Portugal. They were the dominant large herbivores of their time, and nothing since has matched their scale.'
+  ],
+  quote: '"Nothing before or since has matched their scale. Argentinosaurus may have weighed 70–80 metric tonnes — potentially the heaviest land animal in history."',
+  facts:[
+    'Sauropod bones contained an air-sac system that reduced neck weight by up to 60% while maintaining structural strength',
+    'Growth ring analysis shows some sauropods grew to adult size in under 20 years — an extraordinarily fast growth rate for such enormous animals',
+    'Sauropod trackways on multiple continents show evidence of herd movement, sometimes with juveniles in the centre for protection',
+    'The largest dinosaur ever measured is probably Patagotitan mayorum, estimated at 37 metres long and possibly 70+ tonnes',
+    'Sauropod necks contain some of the most elongated vertebrae of any animal in history — up to 14 times longer than wide in some species'
+  ]
+},
+'stegosaurus': {
+  icon:'🦔', badge:'155 Million Years Ago', badgeColor:'#38a890',
+  title:'Stegosaurus & Allosaurus',
+  sub:'The Morrison Formation — A Jurassic World',
+  image:'https://commons.wikimedia.org/wiki/Special:FilePath/Stegosaurus_stenops_Life_Reconstruction.png?width=800',
+  imgCaption:'Stegosaurus stenops specimen at the Denver Museum of Nature & Science. The function of its iconic back plates remains debated by paleontologists. (Wikimedia Commons)',
+  body:[
+    'Stretching from Montana to New Mexico in a broad diagonal band across the American West, the Morrison Formation is one of the richest dinosaur fossil deposits ever found. Laid down in the Late Jurassic, approximately 148–155 million years ago, it preserves an ecosystem of extraordinary complexity and diversity.',
+    'Stegosaurus stenops stalked the Morrison floodplains with its iconic rows of diamond-shaped bony plates running along its back, and four lethal spikes on its tail (the "thagomizer"). The plates are one of paleontology\'s enduring mysteries — too thin and poorly supplied with blood to be primarily defensive, too distinctive for pure camouflage. Most researchers now favour thermoregulation or species recognition as their primary function.',
+    'Allosaurus fragilis was the apex predator. Reaching 9–12 metres in length, it was a powerful, fast-running theropod with large serrated teeth and three-fingered hands tipped with claws. Palaeontologists have found Allosaurus tooth marks on sauropod tail vertebrae — direct evidence of predator-prey interactions across one of the most spectacular ecological theatres in Earth history.',
+    'Alongside Stegosaurus and Allosaurus lived an astonishing cast: the enormous sauropods Brontosaurus, Apatosaurus, Camarasaurus, and Diplodocus; the small agile theropods Ornitholestes and Coelurus; the armoured Gargoyleosaurus. The Morrison was a world as rich and complex as any modern African savanna.'
+  ],
+  quote: '"Allosaurus fragilis was the apex predator of the Morrison, reaching 9–12 meters in length. Tooth marks found on sauropod bones are direct evidence of predation across one of the most spectacular predator-prey ecosystems in Earth history."',
+  facts:[
+    'The Morrison Formation extends across 13 US states and has yielded over 70 dinosaur species — the most diverse Jurassic fauna known',
+    'Stegosaurus had a brain roughly the size of a walnut — one of the smallest brain-to-body ratios of any dinosaur',
+    'Allosaurus tooth marks on sauropod bones at the Cleveland-Lloyd Dinosaur Quarry are direct evidence of predation or scavenging',
+    'The Morrison ecosystem is thought to have been a semi-arid floodplain, similar to the modern Serengeti in terms of large-animal density',
+    'Several complete Stegosaurus skeletons have been found, including "Sophie" at the Natural History Museum in London, one of the most complete ever discovered'
+  ]
+},
+'archaeopteryx': {
+  icon:'🦅', badge:'150 Million Years Ago', badgeColor:'#38a890',
+  title:'Archaeopteryx',
+  sub:'The Bridge Between Dinosaurs and Birds',
+  image:'https://commons.wikimedia.org/wiki/Special:FilePath/Archaeopteryx_lithographica_%28Berlin_specimen%29.jpg?width=800',
+  imgCaption:'The Berlin specimen of Archaeopteryx lithographica, discovered in 1877 and housed at the Museum für Naturkunde, Berlin. One of the most famous fossils in scientific history. (Wikimedia Commons)',
+  body:[
+    'In 1861, just two years after Charles Darwin published On the Origin of Species, a fossil emerged from the fine limestone quarries of Solnhofen, Bavaria, that seemed almost too convenient to be true. It was a creature caught between worlds: with the sharp teeth, clawed wings, and long bony tail of a theropod dinosaur, yet unmistakably feathered, with broad aerodynamic flight feathers covering its wings.',
+    'Archaeopteryx lithographica was not the first feathered dinosaur in the history of life — we now know feathers evolved tens of millions of years earlier — but it was the first conclusive proof that birds descended from dinosaurs. In a single slab of limestone, it resolved one of the greatest debates in Victorian science and opened a new era of understanding.',
+    'The Solnhofen limestone formed in a shallow, oxygen-poor lagoon in what was then a tropical archipelago. The near-absence of oxygen at the bottom meant that even delicate soft tissues could be preserved. Archaeopteryx specimens show not just bones but the precise outlines of individual feathers — including asymmetric flight feathers on the wings, almost identical to those of modern flying birds.',
+    'Whether Archaeopteryx could truly fly, or only glide or flutter between trees, is still debated. Its flight muscles may have been weaker than modern birds, and its shoulder girdle was oriented differently. But structurally, its feathers were the real thing. It was, in the most literal sense, a feathered dinosaur with wings.'
+  ],
+  quote: '"Archaeopteryx proved that birds are living dinosaurs, the direct descendants of feathered theropods. It was not the first feathered dinosaur, and not quite a modern bird — but it was the bridge that changed biology forever."',
+  facts:[
+    'Only about 12 Archaeopteryx specimens are known, all from a small area of Bavaria, Germany',
+    'The 1861 London specimen was purchased by the Natural History Museum from a physician who reportedly used it to pay a medical debt',
+    'Archaeopteryx has true flight feathers with the asymmetric shape characteristic of modern flying birds, not primitive protofeathers',
+    'The Solnhofen limestone that preserves Archaeopteryx also preserves insects, pterosaurs, horseshoe crabs, and soft-bodied marine creatures',
+    'Archaeopteryx had theropod features including teeth (all modern birds are toothless), three clawed fingers, and a long bony tail vertebral column'
+  ]
+},
+'feathered-china': {
+  icon:'🪶', badge:'130 Million Years Ago', badgeColor:'#3890c8',
+  title:'Feathered Dinosaurs of China',
+  sub:'The Yixian Formation — The Feather Revolution',
+  image:'https://commons.wikimedia.org/wiki/Special:FilePath/Microraptor_gui_holotype.png?width=800',
+  imgCaption:'Microraptor gui holotype specimen from the Yixian Formation of Liaoning Province, China — a four-winged dinosaur that rewrote our understanding of flight origins. (Wikimedia Commons)',
+  body:[
+    'In the early 1990s, farmers in Liaoning Province, northeastern China, began finding extraordinary fossils in the fine shale and tuff layers of what geologists call the Yixian Formation. Volcanic eruptions had buried entire forest ecosystems under ash, preserving them in astonishing detail. What emerged from this rock over the following decades rewrote the textbook on how birds evolved from dinosaurs.',
+    'Sinosauropteryx, described in 1996, was the first non-avian dinosaur confirmed to have feathers — simple filament-like structures covering the body, almost certainly used for insulation. High-powered microscopes later revealed its preserved colour: alternating rufous-red and white bands on the tail, like a raccoon. A dinosaur with a colour pattern.',
+    'Microraptor gui had four wings — feathers on both its arms and its legs, forming two sets of wings. Caudipteryx had arms too short to fly but bore elaborate tail fans for display. Zhenyuanlong, described in 2015, had complex layered flight feathers nearly identical to a modern bird\'s wing, yet its arms were too short to generate lift. These discoveries proved decisively that feathers evolved tens of millions of years before flight.',
+    'The Yixian fossils revealed that the transition from feathered ground-dwelling dinosaurs to flying birds was not a single step but a long, complex evolutionary experiment — with feathers playing roles in insulation, display, brooding eggs, and species recognition long before any animal used them to fly.'
+  ],
+  quote: '"These fossils proved that feathers evolved long before flight, likely for display, insulation, and species recognition. The Yixian Formation yielded a parade of feathered dinosaurs that rewrote the textbooks."',
+  facts:[
+    'Sinosauropteryx (1996) was the first non-avian dinosaur proven to have feathers — preserved as filamentous structures around its fossil skeleton',
+    'Preserved melanosomes in Sinosauropteryx feathers revealed it had a striped rufous-and-white tail — the first confirmed dinosaur colour pattern',
+    'Microraptor gui had four wings and may have glided from tree to tree, though it probably could not achieve powered flight',
+    'Zhenyuanlong suni (described 2015) had fully modern-looking flight feathers but arms too short to fly',
+    'Over 60 species of feathered non-avian dinosaurs are now known, all from the Cretaceous of China and other localities worldwide'
+  ]
+},
+'spinosaurus': {
+  icon:'🐟', badge:'112 Million Years Ago', badgeColor:'#3890c8',
+  title:'Spinosaurus',
+  sub:'The Largest Carnivorous Dinosaur',
+  image:'https://commons.wikimedia.org/wiki/Special:FilePath/Spinosaurus_BW.jpg?width=800',
+  imgCaption:'Spinosaurus skull cast showing the long, narrow gharial-like snout adapted for catching fish. The original Egyptian fossils were destroyed in 1944. (Wikimedia Commons)',
+  body:[
+    'Tyrannosaurus rex holds its title as the most famous meat-eating dinosaur, but the largest carnivorous dinosaur ever discovered was something far stranger: Spinosaurus aegyptiacus, a semi-aquatic giant from the Cretaceous of North Africa that exceeded T. rex in length by 2–3 metres.',
+    'Spinosaurus was bizarre by any standard. It carried a sail of elongated neural spines up to 1.65 metres tall along its back — potentially covered in skin to form a display or thermoregulation structure. Its skull was long and narrow like a modern gharial, filled with conical teeth perfect for gripping slippery fish rather than slicing through bone. Its hind legs were short and stocky, its arms enormous.',
+    'For decades, Spinosaurus was a mystery — the original fossils discovered by Ernst Stromer of Munich were destroyed in a 1944 Allied bombing raid, leaving only detailed drawings. Then, in 2014, a remarkable new set of Spinosaurus fossils was recovered from the Moroccan Sahara. The new bones revealed something no one expected: extremely dense, compact bones in the legs and feet — like those of a diving bird — indicating that Spinosaurus spent significant time in the water. It was likely the first truly aquatic non-marine dinosaur.',
+    'New analysis published in 2020 showed Spinosaurus had a long, paddle-like tail — unlike any other known dinosaur — perfectly shaped for propulsion through water. This was an animal that hunted in rivers and estuaries, pursuing the enormous coelacanths, sawfish, and lungfish of Cretaceous North Africa.'
+  ],
+  quote: '"Spinosaurus aegyptiacus exceeded T. rex in length by 2–3 meters. New fossils show dense bones suited to buoyancy control and a paddle-like tail — making Spinosaurus the first truly aquatic non-marine dinosaur."',
+  facts:[
+    'Spinosaurus aegyptiacus is estimated at 14–15 metres in length and possibly 7–20 tonnes, making it the largest known carnivorous dinosaur',
+    'The original Spinosaurus fossils, collected by Ernst Stromer in Egypt (1912), were destroyed when the Munich Museum was bombed in April 1944',
+    'Dense leg bones (pachyostosis) similar to penguins and hippos suggest Spinosaurus needed ballast to stay submerged while foraging',
+    'Spinosaurus\'s paddle-like tail was described in a 2020 Nature paper — the first dinosaur tail shown to be adapted for aquatic propulsion',
+    'Spinosaurus lived alongside enormous predatory fish including 3-metre sawfish and large coelacanths in the rivers of Cretaceous North Africa'
+  ]
+},
+'tyrannosaurs': {
+  icon:'👑', badge:'84 Million Years Ago', badgeColor:'#4060c0',
+  title:'Rise of the Tyrannosaurs',
+  sub:'80 Million Years of Evolution',
+  image:'https://commons.wikimedia.org/wiki/Special:FilePath/Albertosaurus_Royal_Tyrrell_2.jpg?width=800',
+  imgCaption:'Albertosaurus sarcophagus skeleton — one of T. rex\'s smaller, earlier relatives. Tyrannosaurs evolved over 80 million years before culminating in Tyrannosaurus rex. (Wikimedia Commons)',
+  body:[
+    'Tyrannosaurus rex did not spring fully formed from the Cretaceous soil. It was the final product of 80 million years of tyrannosaur evolution — a long dynasty that began with small, feathered, crow-sized ancestors in the Late Jurassic and gradually scaled upward through geological time.',
+    'The earliest tyrannosaurs, known from China and other parts of Asia, were lightly built, fast-running predators the size of large dogs. They had relatively large brains and forward-facing eyes — the beginning of the enhanced binocular vision that would become one of T. rex\'s most fearsome assets. Guanlong wucaii from Late Jurassic China bore an elaborate head crest, almost certainly for display. Dilong paradoxus, from the Yixian Formation, was covered in filamentous feathers.',
+    'For most of the Cretaceous, tyrannosaurs remained medium-sized — overshadowed in their own ecosystems by other large predators. Then something changed around 80 million years ago. As the large allosauroid predators died out in North America and Asia, the tyrannosaurs had room to grow. Albertosaurus, Daspletosaurus, Gorgosaurus — each generation was larger than the last. By 68 million years ago, Tyrannosaurus rex stood at the apex.',
+    'The anatomy of later tyrannosaurs reflects their niche as bone-crushing apex predators: enormously deep and wide skulls to absorb the forces of their powerful bite, bone-crushing posterior teeth for processing carcasses, and small but muscular arms with enormous attachment points for muscles. Their two-fingered hands were powerful despite being short.'
+  ],
+  quote: '"T. rex only evolved in the last 2 million years of the Cretaceous — after 80 million years of tyrannosaur evolution…Tyrannosaurs had binocular vision like owls — they could judge depth precisely when striking at prey."',
+  facts:[
+    'The earliest tyrannosaurs were crow-to-dog-sized feathered animals from the Late Jurassic, approximately 165 million years ago',
+    'Tyrannosaurus rex only appeared in the last 2 million years of the Cretaceous — the endpoint of an 80-million-year dynasty',
+    'Guanlong wucaii from China had an elaborate skull crest — one of the most ornamented of all tyrannosaurs',
+    'Albertosaurus bone beds in Alberta suggest these smaller tyrannosaurs hunted in groups, unlike the solitary lifestyle suggested for T. rex',
+    'The tyrannosaur arm reduction (from three fingers to two in later species) is one of the most discussed evolutionary mysteries in paleontology'
+  ]
+},
+'peak-diversity': {
+  icon:'🌎', badge:'77 Million Years Ago', badgeColor:'#4060c0',
+  title:'Peak Diversity',
+  sub:'Laramidia — Island of Giants',
+  image:'https://commons.wikimedia.org/wiki/Special:FilePath/Triceratops_horridus_skull_-_MUSE.jpg?width=800',
+  imgCaption:'Triceratops horridus skeleton — one of the most iconic products of the extraordinary Late Cretaceous dinosaur radiation in western North America. (Wikimedia Commons)',
+  body:[
+    'The Western Interior Seaway was a shallow sea that divided North America from north to south throughout the Late Cretaceous. On its western shore lay Laramidia — an island continent stretching from Alaska to Mexico — and it became one of the most remarkable evolutionary laboratories in Earth history.',
+    'Cut off from the east by the seaway, Laramidian dinosaurs diversified at a spectacular rate. The ceratopsians — horned dinosaurs — produced over 60 known species in just 25 million years, each with a distinctive arrangement of horns, frills, and bosses on the skull. Triceratops, Styracosaurus, Pachyrhinosaurus, Centrosaurus, Chasmosaurus: the variety is almost overwhelming.',
+    'Hadrosaurs — the duck-billed dinosaurs — evolved elaborate cranial crests that almost certainly functioned as resonating chambers for species-specific calls. Parasaurolophus had a hollow backward-swept crest that produced a distinctive foghorn-like call; Corythosaurus had a semicircular crest like an ancient Corinthian helmet. These were animals that recognised each other by sight and sound.',
+    'Ankylosaurs plated in bone, pachycephalosaurs with dome-shaped skulls for combat, small theropods with elaborate feather displays — the Late Cretaceous of western North America was the Mesozoic equivalent of the Serengeti, teeming with large animals competing, cooperating, and coevolving with each other in an ecosystem of extraordinary complexity. It all ended at 66 million years ago.'
+  ],
+  quote: '"The Western Interior Seaway divided North America into Laramidia (west) and Appalachia (east). The Two Medicine Formation preserves evidence of nesting colonies and parental care in hadrosaurs — some of the most compelling dinosaur behaviour on record."',
+  facts:[
+    'The Western Interior Seaway, up to 1,000 km wide, divided North America throughout the Late Cretaceous',
+    'Ceratopsian dinosaurs diversified into over 60 known species during the Late Cretaceous of North America and Asia',
+    'The hadrosaur Maiasaura ("good mother lizard") was discovered in Montana with evidence of parental care — nests tended and young cared for after hatching',
+    'Ankylosaur tail clubs could deliver enough force to break the bones of a large tyrannosaur — one of the most powerful defensive weapons in dinosaur history',
+    'The diversity of Late Cretaceous dinosaurs was so high that some species may have recognised each other\'s elaborate cranial ornaments from hundreds of metres away'
+  ]
+},
+'trex': {
+  icon:'🦖', badge:'68 Million Years Ago', badgeColor:'#4060c0',
+  title:'Tyrannosaurus rex',
+  sub:'The Apex Predator of All Time',
+  image:'https://commons.wikimedia.org/wiki/Special:FilePath/Sue_the_T._Rex_at_the_Field_Museum.jpg?width=800',
+  imgCaption:'Sue, the most complete Tyrannosaurus rex specimen ever found, mounted at the Field Museum of Natural History, Chicago. Named after discoverer Sue Hendrickson. (Wikimedia Commons)',
+  body:[
+    'Tyrannosaurus rex stood at the end of 80 million years of tyrannosaur evolution, and it was extraordinary in every measurable way. Standing approximately 4 metres at the hip, stretching 12 metres from nose to tail, and weighing up to 9 metric tons, it had the most powerful bite of any land animal ever measured: approximately 6 tonnes of force at the back teeth — enough to crunch through bone as though it were balsa wood.',
+    'The skull of T. rex is a study in biological engineering. It was massive — up to 1.5 metres long — and filled with banana-sized teeth that were not sharp blades but robust, almost blunt pegs, designed not for slicing but for crushing. The rear teeth of the jaw functioned like bone shears. Stomach contents preserved in some specimens contain fragments of hadrosaur bone that T. rex had literally chewed and swallowed.',
+    'T. rex almost certainly had excellent senses. Its forward-facing eyes gave it binocular vision comparable to a modern hawk. The olfactory bulbs in its brain (responsible for smell) were proportionally enormous — suggesting T. rex could track prey by scent over long distances. Growth ring analysis of bone shows it grew at an astonishing rate during its teenage years: nearly 2 kilograms per day during peak growth phases.',
+    'Whether T. rex was primarily a predator or a scavenger has been one of the longest debates in paleontology. The current consensus is that it was an active predator that also readily scavenged — as most large predators do today. Its forward-facing eyes and speed estimates of 12–25 km/h for adults strongly suggest active hunting was a core part of its life.'
+  ],
+  quote: '"T. rex bite force has been measured at 6 tonnes — the strongest of any land animal ever. Growth ring analysis of bones shows juveniles grew at nearly 2 kg/day in their teenage growth burst. Sue, the largest known T. rex, is 12.3 m long."',
+  facts:[
+    'T. rex bite force is estimated at 35,000–57,000 Newtons — the strongest bite of any terrestrial animal ever measured',
+    'Sue (Field Museum, Chicago) is the most complete T. rex skeleton at 90% — found in 1990 by palaeontologist Sue Hendrickson in South Dakota',
+    'T. rex had the largest olfactory bulbs relative to brain size of any dinosaur, suggesting an extraordinary sense of smell',
+    'Bone histology shows T. rex grew at nearly 2 kg per day during its teenage growth spurt — from roughly 2 to 4 tons in four years',
+    'T. rex existed for only about 2 million years before the K-Pg extinction — a relatively short reign for such a dominant predator'
+  ]
+},
+'chicxulub': {
+  icon:'☄️', badge:'66 Million Years Ago', badgeColor:'#ff2222',
+  title:'Chicxulub Impact',
+  sub:'The Day the Age of Dinosaurs Ended',
+  image:'https://commons.wikimedia.org/wiki/Special:FilePath/Chicxulub_Free-Air_Gravity_anomaly.png?width=800',
+  imgCaption:'Gravity anomaly map of the Chicxulub impact crater, buried beneath the Yucatán Peninsula and Gulf of Mexico. The 180-km-wide ring structure was discovered only in the 1980s. (Wikimedia Commons)',
+  body:[
+    'Sixty-six million years ago, a rock approximately 10–15 kilometres across, travelling at roughly 20 kilometres per second, struck the shallow tropical waters of what is now the Yucatán Peninsula of Mexico. The energy released in the first moments of impact was approximately 10 billion times that of the bomb dropped on Hiroshima — more energy than all nuclear weapons ever built, detonated simultaneously.',
+    'The immediate effects were apocalyptic at a planetary scale. Within minutes, a 100-kilometre-wide fireball vaporised everything within a thousand kilometres. Billions of tonnes of vaporised rock were ejected into space and rained back down across the entire planet as glowing debris, briefly superheating the atmosphere to oven temperatures and igniting forest fires worldwide. The world literally caught fire.',
+    'Then came the long darkness. The combination of dust, soot from global fires, and sulfur aerosols from the vaporised target rock — rich in sulfate minerals — blocked the sun for months to years. Photosynthesis collapsed. The food chains that depended on plants and algae unravelled from the bottom up. An estimated 75% of all species went extinct within tens of thousands of years — geologically instantaneous.',
+    'The evidence is preserved in a global layer of iridium — rare on Earth but abundant in asteroids — found at precisely 66 million years ago in rocks on every continent. This is the K-Pg boundary: the thin line separating a world of dinosaurs from a world of mammals. The crater itself, 180 kilometres wide, was discovered only in the 1980s, buried beneath the Yucatán Peninsula and Gulf of Mexico, by oil prospectors looking for something else entirely.'
+  ],
+  quote: '"The impactor released energy equivalent to 10 billion Hiroshima bombs in under a second. A global layer of iridium (rare on Earth but common in asteroids) marks this exact moment in rock layers worldwide."',
+  facts:[
+    'The Chicxulub impactor was approximately 10–15 km in diameter — roughly the height of Mount Everest',
+    'The crater is 180 km in diameter and 20 km deep, buried beneath the Yucatán Peninsula and Gulf of Mexico',
+    'A global iridium anomaly at the K-Pg boundary — found on every continent — was the first evidence that an asteroid caused the extinction (1980)',
+    'The impact triggered earthquakes with a magnitude likely exceeding 11 and generated megatsunami hundreds of metres tall',
+    'Approximately 75% of all species went extinct at the K-Pg boundary, including all non-avian dinosaurs weighing more than a few kilograms'
+  ]
+},
+'birds': {
+  icon:'🐦', badge:'64 Million Years Ago', badgeColor:'#8050c0',
+  title:'Birds Inherit the Earth',
+  sub:'Dinosaurs Conquer the Modern World',
+  image:'https://commons.wikimedia.org/wiki/Special:FilePath/Bird_Diversity_2013.png?width=800',
+  imgCaption:'A sample of modern bird diversity — 10,500 species of living dinosaurs, the direct descendants of Mesozoic theropods that survived the Chicxulub impact. (Wikimedia Commons)',
+  body:[
+    'The Chicxulub impact did not destroy all dinosaurs. One lineage survived: the avian dinosaurs — birds. Small, feathered, and capable of surviving on seeds and insects that persisted through the years of darkness following the impact, they endured the catastrophe that killed their larger cousins and emerged into a world emptied of competitors.',
+    'What followed was one of the most explosive evolutionary radiations in vertebrate history. Within a few million years of the extinction, birds had diversified into thousands of new forms. Gastornis — a flightless bird nearly 2 metres tall with a skull larger than a horse\'s head — stalked the early Paleogene forests of Europe and North America. Penguins, shorebirds, raptors, and songbirds diversified across every continent and ocean.',
+    'Today there are approximately 10,500 species of birds — more than all species of mammals, reptiles, and amphibians combined. Every crow on a telephone wire, every sparrow in a hedge, every albatross riding the Southern Ocean winds: all are living dinosaurs. Their ancestors survived one of the greatest mass extinctions in Earth history, and today they occupy every habitat on the planet, from tropical rainforests to Antarctic sea ice.',
+    'The Age of Dinosaurs, in the most meaningful sense, never ended. It simply transformed. The feathered theropods that evolved in the Jurassic and diversified through the Cretaceous continue their story in the modern world — under a new name, with new forms, filling new niches. Birds are the dinosaurs. We live in the Age of Dinosaurs still.'
+  ],
+  quote: '"Birds are the direct descendants of maniraptoran theropod dinosaurs — they ARE dinosaurs by any scientific definition. There are approximately 10,500 living bird species — more than all mammal, reptile, and amphibian species combined."',
+  facts:[
+    'Birds are scientifically classified as avian dinosaurs — they are not merely related to dinosaurs, they are dinosaurs',
+    'The common ancestor of all modern birds (the "crown group") is thought to have survived the K-Pg extinction by living on seeds and insects',
+    'Early Paleogene birds like Gastornis (Europe) stood 2 metres tall — some of the largest predatory birds in Earth history',
+    'The rapid diversification of birds after the K-Pg extinction is one of the fastest known vertebrate radiations — thousands of species in under 10 million years',
+    'Modern birds retain many dinosaurian features: wishbones (fused clavicles), three-toed feet, air sacs in bones, and scales on their feet'
+  ]
+}
+};
+
+// ── Navigation bar events ─────────────────────────────────────────────────────
+const NAV_EVENTS = [
+  {id:'great-dying',icon:'🌋',name:'The Great Dying',date:'252 mya'},
+  {id:'first-dinosaurs',icon:'🦎',name:'First Dinosaurs',date:'232 mya'},
+  {id:'end-triassic',icon:'🔥',name:'End-Triassic',date:'201 mya'},
+  {id:'archaeopteryx',icon:'🦅',name:'Archaeopteryx',date:'150 mya'},
+  {id:'feathered-china',icon:'🪶',name:'Feathered Dinosaurs',date:'130 mya'},
+  {id:'spinosaurus',icon:'🐟',name:'Spinosaurus',date:'112 mya'},
+  {id:'trex',icon:'🦖',name:'T. rex',date:'68 mya'},
+  {id:'chicxulub',icon:'☄️',name:'Chicxulub Impact',date:'66 mya'},
+  {id:'birds',icon:'🐦',name:'Birds',date:'64 mya'},
+];
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function render() {
+  const hash = location.hash.replace('#','') || 'trex';
+  const ev = EVENTS[hash];
+  const app = document.getElementById('app');
+
+  if (!ev) {
+    document.getElementById('loading').style.display='none';
+    document.getElementById('not-found').style.display='block';
+    return;
+  }
+
+  document.title = `${ev.title} — The Age of Dinosaurs`;
+
+  const others = NAV_EVENTS.filter(e => e.id !== hash).slice(0,4);
+
+  app.innerHTML = `
+    <div class="top-bar">
+      <a href="index.html" class="back-btn">← Timeline</a>
+      <span class="top-title">The Age of Dinosaurs</span>
+    </div>
+
+    <div class="hero loading" id="hero-wrap">
+      <img id="hero-img"
+        src="${ev.image}"
+        alt="${ev.title}"
+        onload="document.getElementById('hero-wrap').classList.remove('loading')"
+        onerror="this.onerror=null;document.getElementById('hero-wrap').classList.remove('loading');this.style.display='none'">
+      <div class="hero-overlay"></div>
+    </div>
+
+    <div class="event-header">
+      <div class="badge" style="background:${ev.badgeColor}20;color:${ev.badgeColor};border:1px solid ${ev.badgeColor}50">
+        ${ev.icon} &nbsp;${ev.badge}
+      </div>
+      <div class="event-title">${ev.title}</div>
+      <div class="event-sub">${ev.sub}</div>
+    </div>
+
+    ${ev.imgCaption ? `<div class="img-caption">${ev.imgCaption}</div>` : ''}
+
+    <div class="body-text">
+      ${ev.body.map(p=>`<p>${p}</p>`).join('')}
+    </div>
+
+    ${ev.quote ? `
+    <div class="book-quote">
+      <p>${ev.quote}</p>
+      <cite>— The Rise and Fall of the Dinosaurs (2018)</cite>
+    </div>` : ''}
+
+    <div class="facts-section">
+      <div class="facts-title">Key Facts</div>
+      ${ev.facts.map(f=>`
+        <div class="fact-item">
+          <div class="fact-dot"></div>
+          <span>${f}</span>
+        </div>`).join('')}
+    </div>
+
+    <div class="more-title">More Events</div>
+    <div class="more-grid">
+      ${others.map(o=>`
+        <a href="#${o.id}" class="more-card" onclick="setTimeout(render,10)">
+          <div class="more-card-icon">${o.icon}</div>
+          <div class="more-card-name">${o.name}</div>
+          <div class="more-card-date">${o.date}</div>
+        </a>`).join('')}
+    </div>
+
+    <div class="source-note">
+      <strong>Source:</strong> Factual content based on <em>The Rise and Fall of the Dinosaurs</em> (2018, William Morrow). Images from Wikimedia Commons under Creative Commons licences.
+    </div>
+  `;
+}
+
+window.addEventListener('hashchange', render);
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<title>The Age of Dinosaurs — Interactive Timeline</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#060811;--surface:#0d1424;--surface2:#14203a;
+  --gold:#d4a843;--gold2:#f0c060;
+  --text:#e8e0d0;--muted:#8899aa;
+}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;overflow-x:hidden;height:100vh;display:flex;flex-direction:column}
+header{flex:0 0 auto;padding:16px 20px 10px;text-align:center;border-bottom:1px solid rgba(212,168,67,.2);background:linear-gradient(180deg,#0a0f1e 0%,var(--bg) 100%);position:relative;z-index:10}
+header h1{font-size:1.25rem;font-weight:700;letter-spacing:.04em;color:var(--gold2)}
+header p{font-size:.7rem;color:var(--muted);margin-top:2px;letter-spacing:.06em;text-transform:uppercase}
+#era-nav{flex:0 0 auto;display:flex;overflow-x:auto;background:var(--surface);border-bottom:1px solid rgba(255,255,255,.07);scrollbar-width:none;padding:0 4px}
+#era-nav::-webkit-scrollbar{display:none}
+.era-tab{flex:0 0 auto;padding:8px 14px;font-size:.65rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;border:none;background:transparent;cursor:pointer;border-bottom:2px solid transparent;transition:.2s;white-space:nowrap}
+.era-tab.active{border-bottom-color:var(--gold)}
+#timeline-outer{flex:1 1 0;overflow-x:auto;overflow-y:hidden;position:relative;scrollbar-width:thin;scrollbar-color:rgba(212,168,67,.3) transparent;cursor:grab}
+#timeline-outer:active{cursor:grabbing}
+#timeline-outer::-webkit-scrollbar{height:4px}
+#timeline-outer::-webkit-scrollbar-thumb{background:rgba(212,168,67,.3);border-radius:4px}
+#timeline-canvas{position:relative;height:100%;width:3130px}
+.period-band{position:absolute;top:0;bottom:0;display:flex;flex-direction:column;justify-content:flex-end;padding-bottom:calc(38px + env(safe-area-inset-bottom, 0px))}
+.period-label{writing-mode:vertical-lr;transform:rotate(180deg);font-size:.55rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.7;padding:4px 0;align-self:center}
+.period-rule{position:absolute;top:0;bottom:0;right:0;width:1px;background:rgba(255,255,255,.12)}
+#center-line{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(212,168,67,.4) 5%,rgba(212,168,67,.4) 95%,transparent);top:50%;transform:translateY(-50%)}
+#ruler{position:absolute;bottom:0;left:0;right:0;height:calc(36px + env(safe-area-inset-bottom, 0px));background:var(--surface);padding-bottom:env(safe-area-inset-bottom, 0px)}
+.ruler-tick{position:absolute;bottom:0;display:flex;flex-direction:column;align-items:center}
+.ruler-tick span{font-size:.55rem;color:var(--muted);margin-bottom:4px;letter-spacing:.03em}
+.ruler-tick::after{content:'';display:block;width:1px;height:8px;background:rgba(255,255,255,.2)}
+.evt-node{position:absolute;top:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;cursor:pointer;z-index:5;transition:transform .15s}
+.evt-node:hover{transform:translate(-50%,-50%) scale(1.15)}
+.evt-node:active{transform:translate(-50%,-50%) scale(.95)}
+.node-circle{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;border:3px solid rgba(255,255,255,.2);box-shadow:0 0 20px rgba(0,0,0,.5);transition:.2s;position:relative}
+.node-circle::after{content:'';position:absolute;inset:-6px;border-radius:50%;border:2px solid;opacity:0;animation:pulse 2.5s infinite}
+@keyframes pulse{0%,100%{opacity:0;transform:scale(1)}50%{opacity:.4;transform:scale(1.15)}}
+.node-circle.extinction::after{border-color:#ff4444}
+.node-circle.milestone::after{border-color:var(--gold)}
+.evt-label{margin-top:6px;font-size:.58rem;font-weight:600;text-align:center;max-width:80px;line-height:1.2;color:var(--text);text-shadow:0 1px 4px rgba(0,0,0,.8);letter-spacing:.02em}
+.evt-node.above .evt-label{order:-1;margin-top:0;margin-bottom:6px}
+.evt-node.above .node-circle{order:0}
+.evt-node.above{top:35%}
+.evt-node.below{top:65%}
+#modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:100;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s;backdrop-filter:blur(4px)}
+#modal-bg.open{opacity:1;pointer-events:auto}
+#modal-wrap{width:100%;max-width:680px;max-height:88vh;display:flex;flex-direction:column;border-radius:24px 24px 0 0;overflow:hidden;transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1)}
+#modal-bg.open #modal-wrap{transform:translateY(0)}
+#modal{background:var(--surface2);flex:1;min-height:0;overflow-y:auto;padding:24px 24px 16px;position:relative}
+#modal-footer{flex:0 0 auto;background:var(--surface2);padding:4px 24px calc(24px + env(safe-area-inset-bottom,0px));border-top:1px solid rgba(255,255,255,.06)}
+.modal-handle{width:40px;height:4px;background:rgba(255,255,255,.2);border-radius:4px;margin:0 auto 20px}
+.modal-header{display:flex;align-items:flex-start;gap:16px;margin-bottom:16px}
+.modal-icon{width:56px;height:56px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.8rem;flex:0 0 auto}
+.modal-titles{flex:1}
+.modal-badge{font-size:.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:20px;background:rgba(212,168,67,.15);color:var(--gold);border:1px solid rgba(212,168,67,.3);display:inline-block;margin-bottom:6px}
+.modal-titles h2{font-size:1.2rem;font-weight:700;line-height:1.2}
+.modal-titles p{font-size:.72rem;color:var(--muted);margin-top:3px}
+.modal-svg{width:100%;max-width:300px;margin:0 auto 16px;display:block;border-radius:14px;overflow:hidden;background:rgba(0,0,0,.3)}
+.modal-desc{font-size:.82rem;line-height:1.65;color:rgba(232,224,208,.85);margin-bottom:16px}
+.modal-facts{background:rgba(212,168,67,.06);border:1px solid rgba(212,168,67,.15);border-radius:10px;padding:14px}
+.modal-facts h4{font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin-bottom:8px}
+.fact-item{display:flex;align-items:flex-start;gap:8px;font-size:.78rem;color:rgba(232,224,208,.8);margin-bottom:6px;line-height:1.4}
+.fact-item::before{content:'◆';font-size:.5rem;color:var(--gold);margin-top:3px;flex:0 0 auto}
+#modal-close{position:absolute;top:16px;right:16px;background:rgba(255,255,255,.1);border:none;border-radius:50%;width:32px;height:32px;font-size:1.1rem;color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center}
+#legend{position:fixed;bottom:50px;right:12px;background:rgba(13,20,36,.9);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px 12px;font-size:.6rem;z-index:20;backdrop-filter:blur(8px)}
+.leg-item{display:flex;align-items:center;gap:6px;margin-bottom:4px;color:var(--muted)}
+.leg-dot{width:10px;height:10px;border-radius:50%;flex:0 0 auto}
+#scroll-hint{position:fixed;bottom:52px;left:50%;transform:translateX(-50%);background:rgba(212,168,67,.15);border:1px solid rgba(212,168,67,.3);border-radius:20px;padding:6px 14px;font-size:.65rem;color:var(--gold);letter-spacing:.05em;z-index:20;animation:fadeHint 4s ease forwards;pointer-events:none}
+@keyframes fadeHint{0%,60%{opacity:1}100%{opacity:0;transform:translateX(-50%) translateY(8px)}}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🦕 The Age of Dinosaurs</h1>
+  <p>252 — 50 Million Years Ago · Permian to Paleogene</p>
+</header>
+
+<nav id="era-nav">
+  <button class="era-tab active" onclick="scrollToMya(252,this)" style="color:#c84060">Permian</button>
+  <button class="era-tab" onclick="scrollToMya(244,this)" style="color:#e07040">Early Triassic</button>
+  <button class="era-tab" onclick="scrollToMya(230,this)" style="color:#e08840">Mid Triassic</button>
+  <button class="era-tab" onclick="scrollToMya(210,this)" style="color:#c86828">Late Triassic</button>
+  <button class="era-tab" onclick="scrollToMya(195,this)" style="color:#60a84a">Early Jurassic</button>
+  <button class="era-tab" onclick="scrollToMya(168,this)" style="color:#48b868">Mid Jurassic</button>
+  <button class="era-tab" onclick="scrollToMya(152,this)" style="color:#38a890">Late Jurassic</button>
+  <button class="era-tab" onclick="scrollToMya(125,this)" style="color:#3890c8">Early Cretaceous</button>
+  <button class="era-tab" onclick="scrollToMya(80,this)" style="color:#4060c0">Late Cretaceous</button>
+  <button class="era-tab" onclick="scrollToMya(66,this)" style="color:#ff3030">K–Pg</button>
+  <button class="era-tab" onclick="scrollToMya(58,this)" style="color:#8050c0">Paleogene</button>
+</nav>
+
+<div id="timeline-outer">
+  <div id="timeline-canvas">
+    <div id="center-line"></div>
+    <div id="ruler"></div>
+    <div id="period-bands"></div>
+    <div id="events-container"></div>
+  </div>
+</div>
+
+<div id="legend">
+  <div class="leg-item"><div class="leg-dot" style="background:#ff4444"></div>Extinction</div>
+  <div class="leg-item"><div class="leg-dot" style="background:var(--gold)"></div>Milestone</div>
+</div>
+
+<div id="scroll-hint">← Scroll to explore →</div>
+
+<div id="modal-bg" onclick="closeModal(event)">
+  <div id="modal-wrap" onclick="event.stopPropagation()">
+    <div id="modal">
+      <button id="modal-close" onclick="closeModal()">✕</button>
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <div class="modal-icon" id="m-icon"></div>
+        <div class="modal-titles">
+          <div class="modal-badge" id="m-badge"></div>
+          <h2 id="m-title"></h2>
+          <p id="m-sub"></p>
+        </div>
+      </div>
+      <div id="m-img-wrap" style="width:100%;margin:0 0 16px;border-radius:12px;overflow:hidden;height:170px;background:var(--surface2);position:relative"><img id="m-img" src="" alt="" style="width:100%;height:170px;object-fit:cover;display:block" onerror="this.parentElement.style.display='none'"></div>
+      <div class="modal-desc" id="m-desc"></div>
+      <div class="modal-facts">
+        <h4>Key Facts</h4>
+        <div id="m-facts"></div>
+      </div>
+    </div>
+    <div id="modal-footer">
+      <button id="m-detail-link" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 20px;background:var(--gold);border:none;border-radius:12px;color:#07091a;font-size:.86rem;font-weight:800;letter-spacing:.03em;cursor:pointer;width:100%;touch-action:manipulation;font-family:inherit;box-shadow:0 4px 20px rgba(212,168,67,.35);">
+        📖 Read Full Story
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+const PX_PER_MYA = 15;
+const START_MYA = 252;
+const CANVAS_PAD = 40;
+
+function xPos(mya) { return (START_MYA - mya) * PX_PER_MYA + CANVAS_PAD; }
+
+const PERIODS = [
+  { name:'Permian', start:252, end:247, color:'#4a1020', text:'#c84060' },
+  { name:'Early Triassic', start:247, end:237, color:'#3a1808', text:'#e07040' },
+  { name:'Mid Triassic', start:237, end:228, color:'#3a2008', text:'#e08840' },
+  { name:'Late Triassic', start:228, end:201, color:'#3a1508', text:'#c86828' },
+  { name:'Early Jurassic', start:201, end:174, color:'#0a2a0a', text:'#60a84a' },
+  { name:'Mid Jurassic', start:174, end:164, color:'#0a2a18', text:'#48b868' },
+  { name:'Late Jurassic', start:164, end:145, color:'#0a2a28', text:'#38a890' },
+  { name:'Early Cretaceous', start:145, end:100, color:'#0a1a38', text:'#3890c8' },
+  { name:'Late Cretaceous', start:100, end:66, color:'#0a0a38', text:'#4060c0' },
+  { name:'K–Pg Boundary', start:66, end:64, color:'#380000', text:'#ff5050' },
+  { name:'Paleogene', start:64, end:50, color:'#200a38', text:'#8050c0' },
+];
+
+const EVENTS = [
+{
+  id:'great-dying', img:'https://commons.wikimedia.org/wiki/Special:FilePath/Flood_Basalt_Map.jpg?width=600', mya:252, type:'extinction', icon:'🌋', pos:'above',
+  title:'The Great Dying',
+  period:'Permian–Triassic Boundary',
+  badge:'252 Million Years Ago',
+  color:'#ff4444',
+  sub:'End-Permian Mass Extinction',
+  desc:'The greatest catastrophe life has ever faced. Cracks hundreds of miles long split open across Siberia, and for tens of thousands of years an unimaginable volume of lava poured out — the Siberian Traps eruptions. Carbon dioxide and sulfur dioxide poisoned the atmosphere, oceans acidified, temperatures soared, and oxygen levels plummeted. Nearly 96% of all marine species and over 70% of land vertebrates vanished. The world that had been ruled by powerful gorgonopsians — bear-sized saberteeth at the top of the food chain — and pig-like dicynodonts was erased.',
+  facts:[
+    'Siberian Traps eruptions released lava over an area the size of modern Europe',
+    '96% of marine species and 70% of land vertebrates went extinct',
+    'Recovery took approximately 10 million years — the longest of any mass extinction',
+    'Some ocean zones turned anoxic (oxygen-free) for millions of years'
+  ],
+  svg:`<svg viewBox="0 0 300 180" xmlns="http://www.w3.org/2000/svg"><rect width="300" height="180" fill="#0a0200"/><ellipse cx="150" cy="185" rx="120" ry="50" fill="#3a0800"/><polygon points="150,20 220,140 80,140" fill="#4a1a00"/><polygon points="150,20 185,90 115,90" fill="#2a0800"/><path d="M150,20 Q175,40 190,70 Q210,100 200,140" stroke="#ff4400" stroke-width="4" fill="none" opacity=".8"/><path d="M150,20 Q125,45 115,75 Q100,110 105,140" stroke="#ff6600" stroke-width="3" fill="none" opacity=".7"/><ellipse cx="150" cy="15" rx="35" ry="20" fill="#2a0a00" opacity=".9"/><ellipse cx="135" cy="8" rx="22" ry="14" fill="#3a1000"/><ellipse cx="165" cy="10" rx="20" ry="12" fill="#3a0800"/><circle cx="160" cy="5" r="3" fill="#ff8800"/><circle cx="140" cy="2" r="2" fill="#ffaa00"/><circle cx="175" cy="12" r="2.5" fill="#ff5500"/><ellipse cx="150" cy="143" rx="45" ry="8" fill="#ff3300" opacity=".9"/><rect x="0" y="0" width="300" height="180" fill="rgba(80,20,0,.15)"/></svg>`
+},
+{
+  id:'dawn-triassic', img:'https://commons.wikimedia.org/wiki/Special:FilePath/Lystrosaurus_BW.jpg?width=600', mya:247, type:'milestone', icon:'🌅', pos:'below',
+  title:'Dawn of the Triassic',
+  period:'Early Triassic',
+  badge:'247 Million Years Ago',
+  color:'#e07040',
+  sub:'The World Rebuilds',
+  desc:'After the Great Dying, Earth entered a prolonged recovery. The world was haunted — vast stretches of barren landscape, empty seas, a sky choked with volcanic haze. But life clung on. Small, fast-breeding survivors began to multiply: archosaurs, synapsids, early reptiles. In the oceans, fish slowly recolonized vacant niches. On land, a handful of species were the ancestors of everything that would follow. Lystrosaurus — a pig-like synapsid — dominated early land vertebrate communities, accounting for more than 90% of individuals in some fossil beds.',
+  facts:[
+    'Recovery from the Permian extinction took 5–10 million years',
+    'Early Triassic seas were so hot and acid that many reef-builders never returned',
+    'Lystrosaurus dominated early Triassic land, accounting for over 90% of some fossil communities',
+    'The stage was set for a great evolutionary radiation of archosaurs'
+  ],
+  svg:`<svg viewBox="0 0 300 180" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="sky2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1a0a00"/><stop offset="100%" stop-color="#3a1800"/></linearGradient></defs><rect width="300" height="180" fill="url(#sky2)"/><circle cx="150" cy="100" r="50" fill="#ff6600" opacity=".2"/><circle cx="150" cy="100" r="32" fill="#ff8800" opacity=".35"/><circle cx="150" cy="100" r="18" fill="#ffaa00" opacity=".8"/><ellipse cx="150" cy="110" rx="140" ry="30" fill="#ff4400" opacity=".2"/><path d="M0,140 Q80,125 150,135 Q220,145 300,130 L300,180 L0,180Z" fill="#1a0800"/><path d="M0,155 Q60,148 120,152 Q180,155 240,150 Q270,148 300,145 L300,180 L0,180Z" fill="#0a0500"/><line x1="70" y1="140" x2="70" y2="122" stroke="#2a5a10" stroke-width="2"/><circle cx="70" cy="120" r="5" fill="#3a6a18"/><line x1="180" y1="138" x2="180" y2="126" stroke="#2a5a10" stroke-width="2"/><circle cx="180" cy="124" r="4" fill="#305215"/></svg>`
+},
+{
+  id:'pangaea', img:'https://commons.wikimedia.org/wiki/Special:FilePath/Pangaea_continents.svg?width=600', mya:237, type:'milestone', icon:'🌍', pos:'above',
+  title:'Pangaea — One World',
+  period:'Middle Triassic',
+  badge:'237 Million Years Ago',
+  color:'#e08840',
+  sub:'The Supercontinent and Megamonsoons',
+  desc:'For hundreds of millions of years the continents had drifted together into one vast landmass — Pangaea, surrounded by the global Panthalassa ocean. From above, it looked like a rough letter C. The interior was a wasteland of deserts, cut off from ocean moisture. Along the coasts and humid southern zones, life flourished. Megamonsoons swept in seasonally with ferocious rainfall, then retreated, leaving months of searing drought. Animals had to be tough or migratory to survive. The geography itself shaped who would thrive — and early dinosaurs were initially pinned to the wet south, unable to cross the desert belts.',
+  facts:[
+    'Pangaea stretched from pole to pole, a single landmass covering one-third of the globe',
+    'Panthalassa — the surrounding ocean — was far larger than any modern ocean',
+    'Interior deserts reached temperatures of 70°C (158°F) in summer',
+    'Megamonsoons created the most extreme seasonal climate in the last 500 million years'
+  ],
+  svg:`<svg viewBox="0 0 300 180" xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="oc" cx="50%" cy="50%"><stop offset="0%" stop-color="#0a3060"/><stop offset="100%" stop-color="#020a18"/></radialGradient></defs><rect width="300" height="180" fill="url(#oc)"/><path d="M90,20 Q140,15 180,30 Q220,45 230,80 Q235,110 220,140 Q200,165 160,168 Q120,170 100,150 Q80,135 85,120 Q95,100 120,95 Q140,90 140,80 Q140,65 120,55 Q100,45 90,30 Z" fill="#4a3018" opacity=".9"/><ellipse cx="155" cy="95" rx="35" ry="25" fill="#8a5a20" opacity=".6"/><path d="M20,50 Q60,45 40,80 Q25,110 50,130" stroke="#1a4080" stroke-width="1.5" fill="none" opacity=".5"/><path d="M260,40 Q240,70 255,100 Q265,130 245,155" stroke="#1a4080" stroke-width="1.5" fill="none" opacity=".5"/><ellipse cx="105" cy="35" rx="12" ry="6" fill="#2a4a10" opacity=".7"/><ellipse cx="215" cy="68" rx="10" ry="5" fill="#2a4a10" opacity=".6"/><ellipse cx="190" cy="145" rx="14" ry="6" fill="#2a4a10" opacity=".7"/><text x="150" y="92" text-anchor="middle" font-size="10" fill="rgba(255,220,150,.6)" font-style="italic">PANGAEA</text></svg>`
+},
+{
+  id:'first-dinosaurs', img:'https://commons.wikimedia.org/wiki/Special:FilePath/Eoraptor_lunensis.jpg?width=600', mya:232, type:'milestone', icon:'🦎', pos:'below',
+  title:'First Dinosaurs',
+  period:'Late Triassic',
+  badge:'232 Million Years Ago',
+  color:'#c86828',
+  sub:'Ischigualasto — Cradle of Dinosaurs',
+  desc:'In a remote corner of what is now northwestern Argentina, small, swift, bipedal reptiles began to leave their bones in river sediments. Named Eoraptor and Herrerasaurus, these were among the earliest confirmed dinosaurs — but they were not world-conquerors yet. They lived in a humid fringe near the southern polar region, unable to cross the desert belts that divided Pangaea. The dominant animals of their world were Metoposaurus (car-sized salamanders), phytosaurs (crocodile-like ambush hunters), and aetosaurs. Dinosaurs were minor players, squeezed into wet refuges at the margins of the Triassic world.',
+  facts:[
+    'Eoraptor lunensis ("dawn thief") was less than 1 meter long and weighed about 10 kg',
+    'Herrerasaurus was a larger predator reaching 3–4 meters',
+    'The Ischigualasto Formation in Argentina contains the earliest known diverse dinosaur assemblage',
+    'Early dinosaurs had an upright gait — more energy-efficient than the sprawling posture of competitors'
+  ],
+  svg:`<svg viewBox="0 0 300 180" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="trb" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1a2a0a"/><stop offset="100%" stop-color="#0a1a06"/></linearGradient></defs><rect width="300" height="180" fill="url(#trb)"/><path d="M30,180 Q45,150 40,120 Q55,130 50,155" fill="#1a4a0a" opacity=".8"/><path d="M260,180 Q250,155 255,125 Q240,140 248,160" fill="#1a4a0a" opacity=".8"/><ellipse cx="150" cy="178" rx="140" ry="8" fill="#1a1008"/><g transform="translate(120,90)"><path d="M-20,30 Q-10,20 0,25" stroke="#4a6030" stroke-width="4" fill="none" stroke-linecap="round"/><ellipse cx="10" cy="22" rx="16" ry="9" fill="#4a6030"/><line x1="22" y1="18" x2="30" y2="8" stroke="#4a6030" stroke-width="5" stroke-linecap="round"/><ellipse cx="34" cy="6" rx="8" ry="5" fill="#4a6030"/><circle cx="37" cy="5" r="2" fill="#ffcc44"/><circle cx="37.5" cy="5" r="1" fill="#000"/><line x1="22" y1="24" x2="20" y2="35" stroke="#3a5020" stroke-width="3" stroke-linecap="round"/><line x1="8" y1="30" x2="0" y2="45" stroke="#3a5020" stroke-width="5" stroke-linecap="round"/><line x1="0" y1="45" x2="5" y2="55" stroke="#3a5020" stroke-width="4" stroke-linecap="round"/><line x1="18" y1="30" x2="24" y2="44" stroke="#3a5020" stroke-width="5" stroke-linecap="round"/><line x1="24" y1="44" x2="22" y2="54" stroke="#3a5020" stroke-width="4" stroke-linecap="round"/></g><g transform="translate(185,105) scale(.65)"><ellipse cx="12" cy="20" rx="14" ry="8" fill="#3a5020"/><line x1="22" y1="16" x2="29" y2="7" stroke="#3a5020" stroke-width="4" stroke-linecap="round"/><ellipse cx="33" cy="5" rx="7" ry="4" fill="#3a5020"/><circle cx="36" cy="4" r="1.5" fill="#ffcc44"/><line x1="8" y1="27" x2="2" y2="42" stroke="#2a4010" stroke-width="4" stroke-linecap="round"/><line x1="17" y1="27" x2="22" y2="41" stroke="#2a4010" stroke-width="4" stroke-linecap="round"/></g></svg>`
+},
+{
+  id:'triassic-giants', img:'https://commons.wikimedia.org/wiki/Special:FilePath/Metoposaurus_diagnosticus_kraselovi_1DB.jpg?width=600', mya:220, type:'milestone', icon:'🐊', pos:'above',
+  title:'Triassic Giants',
+  period:'Late Triassic',
+  badge:'220 Million Years Ago',
+  color:'#c86828',
+  sub:'Metoposaurus and Crocodile-line Rulers',
+  desc:'The Triassic world teemed with competitors that were not dinosaurs. Metoposaurus — a giant amphibian — lurked in tropical lakes and rivers. Its head was as wide as a door, filled with hundreds of interlocking teeth designed to snap up fish and anything that approached the water. When droughts killed the lakes, hundreds of Metoposaurus died together, leaving bone beds that paleontologists still excavate in Portugal and North America. Phytosaurs, which looked almost exactly like modern crocodilians, hunted the same waterways. These were the rulers of the late Triassic world — until something changed.',
+  facts:[
+    'Metoposaurus skulls can reach 60 cm across — enormous relative to its body',
+    'Mass death sites in Portugal show hundreds of individuals caught in drying lake beds',
+    'Phytosaurs evolved crocodile-like forms independently — a striking case of convergent evolution',
+    'Despite their dominance, crocodile-line archosaurs would later lose out to dinosaurs after the Triassic extinction'
+  ],
+  svg:`<svg viewBox="0 0 300 180" xmlns="http://www.w3.org/2000/svg"><rect width="300" height="180" fill="#030d12"/><rect x="0" y="110" width="300" height="70" fill="#0a2a38"/><ellipse cx="120" cy="115" rx="30" ry="4" fill="none" stroke="#1a4a5a" stroke-width="1.5" opacity=".6"/><g transform="translate(60,95)"><rect x="10" y="0" width="90" height="25" rx="8" fill="#2a4a20"/><circle cx="35" cy="5" r="6" fill="#1a2a10"/><circle cx="35" cy="5" r="4" fill="#aa8820"/><circle cx="36" cy="5" r="2" fill="#000"/><circle cx="70" cy="5" r="6" fill="#1a2a10"/><circle cx="70" cy="5" r="4" fill="#aa8820"/><circle cx="71" cy="5" r="2" fill="#000"/><path d="M10,25 Q55,30 100,25" stroke="#1a3010" stroke-width="2" fill="none"/><rect x="20" y="23" width="3" height="5" rx="1" fill="#e8ddc0"/><rect x="35" y="23" width="3" height="5" rx="1" fill="#e8ddc0"/><rect x="50" y="24" width="3" height="4" rx="1" fill="#e8ddc0"/><rect x="65" y="23" width="3" height="5" rx="1" fill="#e8ddc0"/><rect x="80" y="23" width="3" height="5" rx="1" fill="#e8ddc0"/><ellipse cx="50" cy="32" rx="30" ry="10" fill="#2a4020"/></g><rect x="0" y="70" width="300" height="40" fill="#0a1a08"/><path d="M0,110 Q50,95 100,105 Q150,115 200,100 Q250,90 300,108 L300,110 L0,110Z" fill="#0e2208"/></svg>`
+},
+{
+  id:'ghost-ranch', img:'https://commons.wikimedia.org/wiki/Special:FilePath/Coelophysis_bauri.jpg?width=600', mya:215, type:'milestone', icon:'🦴', pos:'below',
+  title:'Ghost Ranch',
+  period:'Late Triassic',
+  badge:'215 Million Years Ago',
+  color:'#c86828',
+  sub:'Coelophysis — Pack Hunters of the Triassic',
+  desc:'In what is now New Mexico, a catastrophic flood event swept hundreds of Coelophysis into a tangle of death. The resulting fossil deposit — Ghost Ranch — revealed thousands of individuals, making it one of the most spectacular dinosaur bonebeds ever found. Coelophysis was a slender, fast-moving predator about 3 meters long, weighing perhaps 20 kilograms. With a long neck, hollow bones, and sharp recurved teeth, it was clearly built for speed and agility. Whether these animals actually lived and hunted in groups or were merely killed together by chance remains debated — but Ghost Ranch showed that early dinosaurs were sophisticated, active predators.',
+  facts:[
+    'Ghost Ranch, New Mexico contains thousands of Coelophysis specimens in a single layer',
+    'Coelophysis had hollow bones — an early precursor to the lightweight bird skeleton',
+    'Some specimens appear to contain juvenile Coelophysis bones — possible evidence of cannibalism',
+    'Named "hollow form" for its air-filled bones, a feature it shares with modern birds'
+  ],
+  svg:`<svg viewBox="0 0 300 180" xmlns="http://www.w3.org/2000/svg"><rect width="300" height="180" fill="#0f0800"/><rect x="0" y="135" width="300" height="45" fill="#2a1808"/><path d="M0,135 Q75,128 150,132 Q225,136 300,130 L300,135 L0,135Z" fill="#1a1005"/><g transform="translate(80,80)"><path d="M-30,15 Q-15,8 0,12" stroke="#6a4820" stroke-width="5" fill="none" stroke-linecap="round"/><ellipse cx="12" cy="10" rx="18" ry="7" fill="#6a4820"/><path d="M26,6 Q38,0 45,-10" stroke="#6a4820" stroke-width="5" fill="none" stroke-linecap="round"/><ellipse cx="50" cy="-13" rx="9" ry="4" fill="#6a4820"/><circle cx="54" cy="-14" r="2.5" fill="#ffcc44"/><circle cx="54.5" cy="-14" r="1" fill="#000"/><line x1="22" y1="24" x2="20" y2="35" stroke="#5a3818" stroke-width="2.5" stroke-linecap="round"/><line x1="6" y1="16" x2="-4" y2="30" stroke="#5a3818" stroke-width="4" stroke-linecap="round"/><line x1="-4" y1="30" x2="0" y2="40" stroke="#5a3818" stroke-width="3" stroke-linecap="round"/><line x1="18" y1="16" x2="26" y2="30" stroke="#5a3818" stroke-width="4" stroke-linecap="round"/><line x1="26" y1="30" x2="24" y2="40" stroke="#5a3818" stroke-width="3" stroke-linecap="round"/></g><g transform="translate(165,95) scale(.75)"><ellipse cx="12" cy="10" rx="18" ry="7" fill="#5a3818"/><path d="M26,6 Q38,0 44,-9" stroke="#5a3818" stroke-width="5" fill="none" stroke-linecap="round"/><ellipse cx="49" cy="-12" rx="9" ry="4" fill="#5a3818"/><circle cx="53" cy="-13" r="2.5" fill="#cc8822"/><line x1="6" y1="16" x2="-2" y2="28" stroke="#4a2810" stroke-width="4" stroke-linecap="round"/><line x1="18" y1="16" x2="24" y2="28" stroke="#4a2810" stroke-width="4" stroke-linecap="round"/></g></svg>`
+},
+{
+  id:'end-triassic', img:'https://commons.wikimedia.org/wiki/Special:FilePath/CAMP.png?width=600', mya:201, type:'extinction', icon:'🔥', pos:'above',
+  title:'End-Triassic Extinction',
+  period:'Triassic–Jurassic Boundary',
+  badge:'201 Million Years Ago',
+  color:'#ff4444',
+  sub:'CAMP Eruptions Open the Door',
+  desc:'As Pangaea began to pull apart, another series of massive volcanic eruptions rocked the world. The Central Atlantic Magmatic Province — CAMP — flooded an area nearly the size of modern Canada with lava, pumping carbon dioxide and sulfur into the atmosphere. The giants of the Triassic — Metoposaurus, phytosaurs, aetosaurs — were wiped out. Roughly 80% of all species vanished. The dinosaurs survived. Perhaps because they were already adapted to harsh, variable climates at the Triassic margins, or simply because they were lucky. When the smoke cleared, the ecological stage was empty. Dinosaurs stepped into the vacancy and would never give it up.',
+  facts:[
+    'CAMP eruptions were among the largest volcanic events in the last 500 million years',
+    'The eruptions released enough CO2 to cause rapid global warming and ocean acidification',
+    'At least 76% of species went extinct at the Triassic-Jurassic boundary',
+    'After this event, dinosaurs expanded to fill ecological niches on every continent within a few million years'
+  ],
+  svg:`<svg viewBox="0 0 300 180" xmlns="http://www.w3.org/2000/svg"><rect width="300" height="180" fill="#0a0200"/><rect x="0" y="120" width="300" height="60" fill="#1a0800"/><ellipse cx="80" cy="128" rx="60" ry="12" fill="#ff2200" opacity=".7"/><ellipse cx="200" cy="132" rx="55" ry="10" fill="#ff3300" opacity=".6"/><ellipse cx="150" cy="140" rx="70" ry="10" fill="#cc1800" opacity=".8"/><line x1="60" y1="115" x2="90" y2="145" stroke="#ff5500" stroke-width="3" opacity=".9"/><line x1="155" y1="112" x2="185" y2="140" stroke="#ff4400" stroke-width="3" opacity=".9"/><ellipse cx="80" cy="75" rx="55" ry="35" fill="#1a1010" opacity=".85"/><ellipse cx="60" cy="60" rx="35" ry="25" fill="#150c0c" opacity=".9"/><ellipse cx="190" cy="70" rx="50" ry="32" fill="#120f0f" opacity=".85"/><circle cx="120" cy="40" r="2" fill="#443030" opacity=".8"/><circle cx="145" cy="50" r="2.5" fill="#333020" opacity=".7"/><ellipse cx="80" cy="115" rx="60" ry="20" fill="#ff2200" opacity=".3"/><ellipse cx="200" cy="112" rx="55" ry="18" fill="#ff3300" opacity=".25"/></svg>`
+},
+{
+  id:'jurassic-explosion', img:'https://commons.wikimedia.org/wiki/Special:FilePath/Diplodocus_Carnegii_skeleton_in_Museum_f%C3%BCr_Naturkunde_Berlin_0830.jpg?width=600', mya:190, type:'milestone', icon:'🌿', pos:'below',
+  title:'Jurassic Explosion',
+  period:'Early Jurassic',
+  badge:'190 Million Years Ago',
+  color:'#60a84a',
+  sub:'Dinosaurs Inherit the Earth',
+  desc:'With their competitors gone, dinosaurs diversified at an extraordinary rate. Within a few million years after the end-Triassic extinction, they had expanded across the entire planet — every continent, every ecosystem. Long-necked prosauropods stripped leaves from the tallest trees. Small, agile theropods hunted insects and small prey in the undergrowth. Armored thyreophorans browsed low vegetation. The world was greening after the volcanic winter, ferns and conifers spreading across landscapes that had been desolated. This was the dawn of the true Age of Dinosaurs — and it would last for over 130 million years.',
+  facts:[
+    'Within 10 million years of the Triassic extinction, dinosaurs had colonized every continent',
+    'Early Jurassic sauropodomorphs include Massospondylus from South Africa',
+    'Conifer forests replaced the Triassic seed-fern flora across much of the world',
+    'The breakup of Pangaea began, isolating populations and accelerating evolution through geographic separation'
+  ],
+  svg:`<svg viewBox="0 0 300 180" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="jbg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1a3010"/><stop offset="100%" stop-color="#0a1a06"/></linearGradient></defs><rect width="300" height="180" fill="url(#jbg)"/><g transform="translate(40,10)"><line x1="0" y1="165" x2="0" y2="40" stroke="#3a2010" stroke-width="6"/><polygon points="0,40 -28,80 28,80" fill="#2a5018"/><polygon points="0,60 -22,92 22,92" fill="#305a1e"/><polygon points="0,78 -18,106 18,106" fill="#38621e"/></g><g transform="translate(100,20)"><line x1="0" y1="160" x2="0" y2="50" stroke="#3a2010" stroke-width="5"/><polygon points="0,50 -22,84 22,84" fill="#285018"/><polygon points="0,68 -18,96 18,96" fill="#2e5818"/></g><g transform="translate(220,5)"><line x1="0" y1="172" x2="0" y2="35" stroke="#4a2810" stroke-width="7"/><polygon points="0,35 -32,80 32,80" fill="#2a5818"/><polygon points="0,58 -26,95 26,95" fill="#306020"/><polygon points="0,78 -20,110 20,110" fill="#386820"/></g><path d="M0,160 Q50,148 100,155 Q150,162 200,153 Q250,145 300,158 L300,180 L0,180Z" fill="#1a380a"/><g transform="translate(155,120)"><ellipse cx="0" cy="0" rx="14" ry="6" fill="#3a5828" opacity=".9"/><path d="M12,-2 Q20,-8 24,-14" stroke="#3a5828" stroke-width="3.5" fill="none" stroke-linecap="round"/><ellipse cx="26" cy="-16" rx="6" ry="3.5" fill="#3a5828"/><line x1="-6" y1="5" x2="-10" y2="18" stroke="#2a4818" stroke-width="3" stroke-linecap="round"/><line x1="6" y1="5" x2="10" y2="18" stroke="#2a4818" stroke-width="3" stroke-linecap="round"/></g></svg>`
+},
+{
+  id:'age-of-giants', img:'https://commons.wikimedia.org/wiki/Special:FilePath/Brachiosaurus_DB.jpg?width=600', mya:165, type:'milestone', icon:'🦕', pos:'above',
+  title:'Age of Giants',
+  period:'Middle Jurassic',
+  badge:'165 Million Years Ago',
+  color:'#48b868',
+  sub:'Sauropods — Largest Land Animals Ever',
+  desc:'The Middle Jurassic saw the rise of the most spectacular animals ever to walk the land. Sauropods pushed the boundaries of what a land animal could physically be. Brachiosaurus, Diplodocus, Brontosaurus, Supersaurus — these creatures stretched 25 to 33 meters in length and weighed up to 70 metric tons. Their necks alone could reach 10 meters. To sustain such bulk, they needed to eat almost constantly, raking enormous quantities of conifer needles and leaves. They had air-filled bones (pneumatization) to reduce weight without sacrificing strength. They were engineering marvels, and nothing before or since has matched their scale.',
+  facts:[
+    'Argentinosaurus may have weighed 70–80 metric tonnes — potentially the heaviest land animal in history',
+    'Sauropod necks contained complex air sacs connected to their lungs, reducing neck weight dramatically',
+    'Some sauropods grew to full adult size in under 20 years — an incredibly fast growth rate',
+    'Sauropod trackways on multiple continents show they sometimes walked in herds'
+  ],
+  svg:`<svg viewBox="0 0 300 180" xmlns="http://www.w3.org/2000/svg"><rect width="300" height="180" fill="#060f04"/><ellipse cx="60" cy="40" rx="55" ry="45" fill="#1a4010" opacity=".85"/><ellipse cx="240" cy="50" rx="50" ry="40" fill="#183c0e" opacity=".85"/><rect x="0" y="148" width="300" height="32" fill="#0e1a08"/><g transform="translate(50,60)"><path d="M-30,70 Q-15,55 0,60" stroke="#3a6828" stroke-width="8" fill="none" stroke-linecap="round"/><ellipse cx="40" cy="62" rx="55" ry="28" fill="#3a6828"/><line x1="55" y1="88" x2="55" y2="115" stroke="#2a5018" stroke-width="10" stroke-linecap="round"/><line x1="20" y1="88" x2="20" y2="108" stroke="#2a5018" stroke-width="10" stroke-linecap="round"/><path d="M75,42 Q90,10 100,-20 Q102,-40 100,-60" stroke="#3a6828" stroke-width="12" fill="none" stroke-linecap="round"/><ellipse cx="100" cy="-62" rx="10" ry="7" fill="#3a6828"/><circle cx="104" cy="-64" r="3" fill="#88cc44"/><circle cx="104.5" cy="-64" r="1.5" fill="#000"/></g></svg>`
+},
+{
+  id:'stegosaurus', img:'https://commons.wikimedia.org/wiki/Special:FilePath/Stegosaurus_stenops_Life_Reconstruction.png?width=600', mya:155, type:'milestone', icon:'🦔', pos:'below',
+  title:'Stegosaurus & Allosaurus',
+  period:'Late Jurassic',
+  badge:'155 Million Years Ago',
+  color:'#38a890',
+  sub:'The Morrison Formation, North America',
+  desc:'The Morrison Formation — a thick band of Late Jurassic sediment running from Montana to New Mexico — is one of the richest dinosaur fossil deposits on Earth. Sauropods like Brontosaurus and Camarasaurus browsed alongside armored Stegosaurus, whose twin rows of diamond-shaped back plates remain mysterious: temperature regulation, display, or defense? Allosaurus — a large, swift predator — stalked these giants. Paleontologists have found Allosaurus tooth marks on sauropod bones, direct evidence of predation or scavenging across one of the most spectacular predator-prey ecosystems in Earth history.',
+  facts:[
+    'Stegosaurus had a brain roughly the size of a walnut — one of the smallest brain-to-body ratios of any dinosaur',
+    'Allosaurus fragilis was the apex predator of the Morrison, reaching 9–12 meters in length',
+    'The Morrison Formation extends across 13 US states and preserves 70+ dinosaur species',
+    'Sauropod footprints are still visible in trackways from Colorado to Wyoming'
+  ],
+  svg:`<svg viewBox="0 0 300 180" xmlns="http://www.w3.org/2000/svg"><rect width="300" height="180" fill="#0a1a06"/><rect x="0" y="148" width="300" height="32" fill="#1a1208"/><g transform="translate(90,75)"><path d="M-15,50 Q-20,45 -28,40 Q-35,36 -30,30" stroke="#3a6020" stroke-width="8" fill="none" stroke-linecap="round"/><path d="M-30,30 L-38,22" stroke="#2a5018" stroke-width="4" stroke-linecap="round"/><path d="M-28,33 L-36,26" stroke="#2a5018" stroke-width="4" stroke-linecap="round"/><ellipse cx="30" cy="45" rx="45" ry="22" fill="#4a7830"/><ellipse cx="-5" cy="26" rx="4" ry="14" fill="#6a9840" transform="rotate(-10,-5,26)"/><ellipse cx="5" cy="20" rx="5" ry="17" fill="#6a9840" transform="rotate(-5,5,20)"/><ellipse cx="17" cy="18" rx="6" ry="19" fill="#5a8838" transform="rotate(0,17,18)"/><ellipse cx="30" cy="18" rx="6" ry="20" fill="#6a9840" transform="rotate(3,30,18)"/><ellipse cx="43" cy="20" rx="5" ry="18" fill="#5a8838" transform="rotate(6,43,20)"/><ellipse cx="55" cy="24" rx="4" ry="15" fill="#6a9840" transform="rotate(10,55,24)"/><path d="M72,38 Q82,32 88,26" stroke="#4a7830" stroke-width="10" fill="none" stroke-linecap="round"/><ellipse cx="93" cy="55" rx="12" ry="7" fill="#4a7830"/><path d="M72,50 Q82,54 94,55" stroke="#4a7830" stroke-width="10" fill="none"/><circle cx="98" cy="53" r="2.5" fill="#88cc44"/><line x1="15" y1="65" x2="10" y2="88" stroke="#3a6020" stroke-width="8" stroke-linecap="round"/><line x1="10" y1="88" x2="6" y2="96" stroke="#3a6020" stroke-width="6" stroke-linecap="round"/><line x1="42" y1="65" x2="46" y2="88" stroke="#3a6020" stroke-width="8" stroke-linecap="round"/><line x1="46" y1="88" x2="50" y2="96" stroke="#3a6020" stroke-width="6" stroke-linecap="round"/></g></svg>`
+},
+{
+  id:'archaeopteryx', img:'https://commons.wikimedia.org/wiki/Special:FilePath/Archaeopteryx_lithographica_(Berlin_specimen).jpg?width=600', mya:150, type:'milestone', icon:'🦅', pos:'above',
+  title:'Archaeopteryx',
+  period:'Late Jurassic',
+  badge:'150 Million Years Ago',
+  color:'#38a890',
+  sub:'The Origin of Flight',
+  desc:'In the fine limestone of the Solnhofen lagoon in Bavaria, one of the most important fossils in scientific history was preserved. Archaeopteryx lithographica was a creature caught between worlds: it had the sharp teeth, clawed wings, and long bony tail of a theropod dinosaur, yet it also had true feathers — broad, aerodynamically functional flight feathers on wings that could, at least to some extent, carry it through the air. Archaeopteryx proved that birds are living dinosaurs, the direct descendants of feathered theropods. It was not the first feathered dinosaur, and not quite a modern bird — but it was the bridge that changed biology forever.',
+  facts:[
+    'Only about 12 Archaeopteryx specimens have ever been found, all from Bavaria, Germany',
+    'The Solnhofen limestone formed in a shallow, oxygen-poor lagoon that preserved even feather impressions',
+    'Archaeopteryx had fully modern flight feathers but also theropod features: teeth, clawed hands, and a bony tail',
+    'It was probably not a strong flier — it may have glided or made short, flapping hops between trees'
+  ],
+  svg:`<svg viewBox="0 0 300 180" xmlns="http://www.w3.org/2000/svg"><rect width="300" height="180" fill="#080f18"/><rect x="0" y="140" width="300" height="40" fill="#0a2030"/><path d="M30,140 Q10,100 20,70 Q30,55 25,40" stroke="#1a4a10" stroke-width="3" fill="none"/><g transform="translate(150,70)"><path d="M-14,2 Q-30,8 -44,5" stroke="#4a3a1a" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M-38,3 L-52,-4" stroke="#3a2a10" stroke-width="3" fill="none"/><path d="M-40,5 L-54,5" stroke="#3a2a10" stroke-width="3" fill="none"/><path d="M-39,7 L-52,12" stroke="#3a2a10" stroke-width="3" fill="none"/><ellipse cx="0" cy="0" rx="16" ry="7" fill="#5a4a2a"/><path d="M4,-4 Q20,-25 40,-30 Q55,-32 65,-25" stroke="#4a3a1a" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M28,-28 L32,-42" stroke="#3a2a10" stroke-width="2.5" fill="none"/><path d="M42,-30 L48,-44" stroke="#3a2a10" stroke-width="2.5" fill="none"/><path d="M55,-24 L64,-34" stroke="#3a2a10" stroke-width="2.5" fill="none"/><path d="M4,-4 Q20,15 38,22 Q52,26 62,20" stroke="#4a3a1a" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M26,20 L28,34" stroke="#3a2a10" stroke-width="2.5" fill="none"/><path d="M42,22 L46,36" stroke="#3a2a10" stroke-width="2.5" fill="none"/><path d="M58,18 L64,28" stroke="#3a2a10" stroke-width="2.5" fill="none"/><path d="M13,-4 Q20,-12 24,-18" stroke="#5a4a2a" stroke-width="5" fill="none" stroke-linecap="round"/><ellipse cx="27" cy="-21" rx="9" ry="5" fill="#5a4a2a"/><circle cx="31" cy="-23" r="2" fill="#aa8830"/><circle cx="31.5" cy="-23" r="1" fill="#000"/><path d="M22,-19 L25,-17 L28,-19 L31,-17" stroke="#e8ddc0" stroke-width=".8" fill="none"/></g></svg>`
+},
+{
+  id:'feathered-china', img:'https://commons.wikimedia.org/wiki/Special:FilePath/Microraptor_gui_holotype.png?width=600', mya:130, type:'milestone', icon:'🪶', pos:'below',
+  title:'Feathered Dinosaurs of China',
+  period:'Early Cretaceous',
+  badge:'130 Million Years Ago',
+  color:'#3890c8',
+  sub:'Yixian Formation — The Feather Revolution',
+  desc:'In Liaoning Province, northeastern China, volcanic eruptions buried entire ecosystems in fine ash and preserved them in extraordinary detail. The Yixian Formation yielded a parade of feathered dinosaurs that rewrote the textbooks. Microraptor had four wings. Sinosauropteryx had simple filament-like proto-feathers. Caudipteryx had stubby wings and a feathered tail fan. And Zhenyuanlong — a large raptor described in 2015 — had complex, layered flight feathers that looked almost identical to a modern bird wing, yet it almost certainly could not fly. These fossils proved that feathers evolved long before flight, likely for display, insulation, and species recognition.',
+  facts:[
+    'Sinosauropteryx, found in 1996, was the first non-bird dinosaur confirmed to have feathers',
+    'Microraptor gui had four wings — some evidence suggests it may have glided from trees',
+    'Zhenyuanlong suni was described in 2015 with feathers as complex as any flying bird',
+    'Preserved coloring reveals Sinosauropteryx had a striped, rufous-and-white banded tail'
+  ],
+  svg:`<svg viewBox="0 0 300 180" xmlns="http://www.w3.org/2000/svg"><rect width="300" height="180" fill="#08101e"/><circle cx="50" cy="30" r="2" fill="#448" opacity=".4"/><circle cx="200" cy="25" r="2" fill="#448" opacity=".4"/><circle cx="250" cy="60" r="1.5" fill="#446" opacity=".3"/><line x1="-5" y1="100" x2="200" y2="80" stroke="#3a2810" stroke-width="8"/><g transform="translate(120,60)"><path d="M-20,15 Q-30,10 -38,5" stroke="#4a3060" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M-35,7 L-46,-2" stroke="#6040a0" stroke-width="2.5" fill="none"/><path d="M-36,9 L-48,9" stroke="#6040a0" stroke-width="2.5" fill="none"/><path d="M-35,11 L-46,18" stroke="#6040a0" stroke-width="2.5" fill="none"/><ellipse cx="0" cy="10" rx="22" ry="11" fill="#4a3860"/><path d="M6,2 Q18,-5 28,-2 Q35,2 30,10" stroke="#6040a0" stroke-width="3" fill="none"/><path d="M12,-2 L14,-14" stroke="#7050b0" stroke-width="2" fill="none"/><path d="M18,-4 L22,-16" stroke="#7050b0" stroke-width="2" fill="none"/><path d="M24,-3 L30,-14" stroke="#7050b0" stroke-width="2" fill="none"/><path d="M18,4 Q26,-4 30,-12" stroke="#4a3860" stroke-width="6" fill="none" stroke-linecap="round"/><ellipse cx="32" cy="-15" rx="10" ry="6" fill="#4a3860"/><circle cx="36" cy="-17" r="4" fill="#1a1030"/><circle cx="36" cy="-17" r="3" fill="#cc8820"/><circle cx="36.5" cy="-17" r="1.5" fill="#000"/><path d="M28,-13 Q32,-10 38,-13" stroke="#e8c880" stroke-width="2" fill="#c8a850"/><line x1="-5" y1="20" x2="-8" y2="28" stroke="#3a2850" stroke-width="3" stroke-linecap="round"/><line x1="10" y1="20" x2="12" y2="28" stroke="#3a2850" stroke-width="3" stroke-linecap="round"/></g></svg>`
+},
+{
+  id:'spinosaurus', img:'https://commons.wikimedia.org/wiki/Special:FilePath/Spinosaurus_BW.jpg?width=600', mya:112, type:'milestone', icon:'🐟', pos:'above',
+  title:'Spinosaurus',
+  period:'Early Cretaceous',
+  badge:'112 Million Years Ago',
+  color:'#3890c8',
+  sub:'The Largest Carnivorous Dinosaur',
+  desc:'The largest carnivorous dinosaur ever discovered was not T. rex — it was Spinosaurus aegyptiacus, a bizarre, semi-aquatic predator from North Africa. It stretched 14 to 15 meters in length and bore a sail of skin-covered spines up to 1.65 meters tall along its back. New fossils recovered from the Sahara reveal dense bones suited to buoyancy control, short hind legs, and a long paddle-like tail — making Spinosaurus unlike any other dinosaur known. It hunted giant fish in rivers and estuaries, and may have been the first truly aquatic non-marine dinosaur. It exceeded T. rex in length by 2–3 meters.',
+  facts:[
+    'Spinosaurus aegyptiacus exceeded T. rex in length by 2–3 meters, though it was likely lighter',
+    'New fossils show dense bones like a diving bird for underwater buoyancy control',
+    'Its conical teeth were perfect for gripping slippery fish, unlike the blade-like teeth of land predators',
+    'The original fossils were destroyed in a 1944 Allied bombing raid on Munich — recent Saharan finds reconstructed the animal'
+  ],
+  svg:`<svg viewBox="0 0 300 180" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="spbg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0a1820"/><stop offset="100%" stop-color="#051015"/></linearGradient></defs><rect width="300" height="180" fill="url(#spbg)"/><rect x="0" y="110" width="300" height="70" fill="#0a2838"/><path d="M0,110 Q75,105 150,108 Q225,111 300,106 L300,110 L0,110Z" fill="#1a4a6a" opacity=".5"/><line x1="30" y1="110" x2="28" y2="70" stroke="#2a5a18" stroke-width="3"/><line x1="260" y1="110" x2="262" y2="74" stroke="#2a5a18" stroke-width="3"/><g transform="translate(70,60)"><ellipse cx="60" cy="55" rx="60" ry="25" fill="#3a6850"/><path d="M20,35 Q30,2 40,-8 Q55,-15 65,-12 Q80,-8 90,5 Q100,25 105,40" stroke="#2a5040" stroke-width="2" fill="#3a6850"/><line x1="30" y1="35" x2="30" y2="0" stroke="#2a5040" stroke-width="2.5"/><line x1="45" y1="30" x2="42" y2="-8" stroke="#2a5040" stroke-width="2.5"/><line x1="58" y1="27" x2="57" y2="-12" stroke="#2a5040" stroke-width="2.5"/><line x1="72" y1="28" x2="73" y2="-10" stroke="#2a5040" stroke-width="2.5"/><line x1="85" y1="32" x2="87" y2="-5" stroke="#2a5040" stroke-width="2.5"/><line x1="97" y1="38" x2="100" y2="7" stroke="#2a5040" stroke-width="2.5"/><path d="M-20,55 Q-10,45 0,50" stroke="#3a6850" stroke-width="10" fill="none" stroke-linecap="round"/><path d="M112,42 Q125,36 138,34 Q148,32 155,36" stroke="#3a6850" stroke-width="9" fill="none" stroke-linecap="round"/><ellipse cx="160" cy="38" rx="14" ry="7" fill="#3a6850"/><circle cx="164" cy="35" r="3.5" fill="#0a1810"/><circle cx="164" cy="35" r="2.5" fill="#88cc44"/><circle cx="164.5" cy="35" r="1.5" fill="#000"/><path d="M148,40 L150,44 L153,40 L156,44 L159,40" stroke="#e8ddc0" stroke-width=".8" fill="none"/><ellipse cx="170" cy="45" rx="10" ry="4" fill="#4488aa" opacity=".8"/></g></svg>`
+},
+{
+  id:'tyrannosaurs', img:'https://commons.wikimedia.org/wiki/Special:FilePath/Albertosaurus_Royal_Tyrrell_2.jpg?width=600', mya:84, type:'milestone', icon:'👑', pos:'below',
+  title:'Rise of the Tyrannosaurs',
+  period:'Late Cretaceous',
+  badge:'84 Million Years Ago',
+  color:'#4060c0',
+  sub:'80 Million Years in the Making',
+  desc:'Long before T. rex, a lineage of feathered tyrannosaurs had been evolving in Asia and North America. The earliest relatives were small — crow-sized, feathered, with large brains relative to their bodies. Guanlong wucaii from Late Jurassic China had a spectacular head crest. Dilong paradoxus from the Yixian Formation was covered in filamentous feathers. Gradually, over tens of millions of years, the lineage grew larger. Their front arms shrank but remained muscular. Their skulls grew massive and deep, with bone-crushing rear teeth. By the Late Cretaceous, Albertosaurus, Daspletosaurus, and finally Tyrannosaurus rex represented the apex of this long evolutionary project.',
+  facts:[
+    'Tyrannosaur ancestors were small, feathered Asian predators in the Late Jurassic',
+    'T. rex only evolved in the last 2 million years of the Cretaceous — after 80 million years of tyrannosaur evolution',
+    'The small arms were actually very powerful — their muscle attachment points are enormous',
+    'Tyrannosaurs had binocular vision like owls — they could judge depth precisely when striking at prey'
+  ],
+  svg:`<svg viewBox="0 0 300 180" xmlns="http://www.w3.org/2000/svg"><rect width="300" height="180" fill="#080a18"/><path d="M0,140 Q50,128 100,135 Q150,142 200,130 Q250,122 300,135 L300,180 L0,180Z" fill="#0e1408"/><g transform="translate(50,100) scale(.55)"><ellipse cx="0" cy="0" rx="16" ry="9" fill="#4a3860"/><path d="M-14,2 Q-24,-2 -30,-8" stroke="#4a3860" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M12,-4 Q18,-12 22,-18" stroke="#4a3860" stroke-width="4" fill="none" stroke-linecap="round"/><ellipse cx="24" cy="-21" rx="8" ry="5" fill="#4a3860"/><circle cx="27" cy="-22" r="2" fill="#cc8820"/><path d="M18,-22 Q20,-28 23,-25" stroke="#8860d0" stroke-width="2" fill="none"/><line x1="-4" y1="8" x2="-6" y2="22" stroke="#3a2850" stroke-width="4" stroke-linecap="round"/><line x1="8" y1="8" x2="12" y2="22" stroke="#3a2850" stroke-width="4" stroke-linecap="round"/><text x="0" y="32" text-anchor="middle" font-size="6" fill="#8060c0" opacity=".8">Guanlong</text></g><g transform="translate(155,90) scale(.8)"><path d="M-22,18 Q-10,12 0,14" stroke="#3a5060" stroke-width="6" fill="none" stroke-linecap="round"/><ellipse cx="14" cy="12" rx="22" ry="12" fill="#3a5060"/><path d="M30,4 Q40,-6 46,-16" stroke="#3a5060" stroke-width="7" fill="none" stroke-linecap="round"/><ellipse cx="52" cy="-20" rx="16" ry="10" fill="#3a5060"/><circle cx="58" cy="-23" r="4" fill="#0a1020"/><circle cx="58" cy="-23" r="3" fill="#cc8820"/><path d="M42,-15 L46,-11 L50,-15 L54,-11 L58,-15" stroke="#fff" stroke-width="1" fill="none"/><line x1="28" y1="8" x2="24" y2="18" stroke="#2a3a48" stroke-width="3" stroke-linecap="round"/><line x1="6" y1="22" x2="-2" y2="42" stroke="#2a3a50" stroke-width="7" stroke-linecap="round"/><line x1="22" y1="22" x2="30" y2="42" stroke="#2a3a50" stroke-width="7" stroke-linecap="round"/><text x="0" y="64" text-anchor="middle" font-size="7" fill="#608090" opacity=".8">Daspletosaurus</text></g></svg>`
+},
+{
+  id:'peak-diversity', img:'https://commons.wikimedia.org/wiki/Special:FilePath/Triceratops_horridus_skull_-_MUSE.jpg?width=600', mya:77, type:'milestone', icon:'🌎', pos:'above',
+  title:'Peak Diversity',
+  period:'Late Cretaceous',
+  badge:'77 Million Years Ago',
+  color:'#4060c0',
+  sub:'Laramidia — Island of Giants',
+  desc:'As the Western Interior Seaway divided North America in two, the western island landmass — Laramidia — became an evolutionary hotbed. Dinosaur species there diversified at an extraordinary rate. The Horseshoe Canyon and Two Medicine Formations preserve a remarkable parade: ceratopsians with every conceivable frill and horn arrangement; hadrosaurs with elaborate cranial crests for sound and display; pachycephalosaurs with dome-shaped heads; ankylosaurs armored to the teeth. The diversity was so extreme that scientists long debated whether closely related species truly co-existed, or whether the fossil record had collapsed time together.',
+  facts:[
+    'The Western Interior Seaway divided North America into Laramidia (west) and Appalachia (east)',
+    'The Two Medicine Formation of Montana preserves evidence of nesting colonies and parental care in hadrosaurs',
+    'Ceratopsians (horned dinosaurs) diversified into over 60 known species in the Late Cretaceous',
+    'Pachycephalosaurs used their dome heads in flank-butting contests, not direct head-on collisions'
+  ],
+  svg:`<svg viewBox="0 0 300 180" xmlns="http://www.w3.org/2000/svg"><rect width="300" height="180" fill="#06080e"/><path d="M130,0 Q140,90 145,180" stroke="#0a3060" stroke-width="35" fill="none" opacity=".7"/><path d="M0,0 Q80,20 120,60 Q135,90 125,130 Q110,165 0,180Z" fill="#1a2a0a" opacity=".9"/><path d="M300,0 Q220,30 175,70 Q158,95 165,140 Q180,170 300,180Z" fill="#162208" opacity=".8"/><g transform="translate(45,120)"><ellipse cx="0" cy="0" rx="22" ry="10" fill="#4a6028"/><ellipse cx="-20" cy="-2" rx="18" ry="14" fill="#3a5020"/><ellipse cx="-25" cy="-1" rx="10" ry="8" fill="#4a5830"/><line x1="-30" y1="-8" x2="-38" y2="-18" stroke="#3a4820" stroke-width="2.5" stroke-linecap="round"/><line x1="-8" y1="9" x2="-10" y2="22" stroke="#2a4010" stroke-width="5" stroke-linecap="round"/><line x1="8" y1="9" x2="10" y2="22" stroke="#2a4010" stroke-width="5" stroke-linecap="round"/></g><g transform="translate(88,65)"><ellipse cx="0" cy="0" rx="18" ry="8" fill="#3a6838"/><path d="M14,-2 Q22,-10 26,-18" stroke="#3a6838" stroke-width="4.5" fill="none" stroke-linecap="round"/><ellipse cx="28" cy="-20" rx="9" ry="5" fill="#3a6838"/><path d="M24,-23 Q28,-32 30,-28" stroke="#2a5828" stroke-width="2.5" fill="none"/><line x1="-8" y1="8" x2="-10" y2="20" stroke="#2a5028" stroke-width="4" stroke-linecap="round"/><line x1="6" y1="8" x2="8" y2="20" stroke="#2a5028" stroke-width="4" stroke-linecap="round"/></g><g transform="translate(210,130)"><ellipse cx="0" cy="-5" rx="24" ry="13" fill="#4a5030"/><ellipse cx="-10" cy="-14" rx="5" ry="4" fill="#3a4028"/><ellipse cx="0" cy="-17" rx="6" ry="4" fill="#3a4028"/><ellipse cx="10" cy="-14" rx="5" ry="4" fill="#3a4028"/><path d="M22,0 Q30,-2 36,0" stroke="#3a4028" stroke-width="5" fill="none" stroke-linecap="round"/><circle cx="38" cy="0" r="6" fill="#3a4028"/><line x1="-10" y1="7" x2="-12" y2="16" stroke="#3a4020" stroke-width="5" stroke-linecap="round"/><line x1="8" y1="7" x2="10" y2="16" stroke="#3a4020" stroke-width="5" stroke-linecap="round"/></g></svg>`
+},
+{
+  id:'trex', img:'https://commons.wikimedia.org/wiki/Special:FilePath/Sue_the_T._Rex_at_the_Field_Museum.jpg?width=600', mya:68, type:'milestone', icon:'🦖', pos:'below', xOffset:-60,
+  title:'Tyrannosaurus rex',
+  period:'Late Cretaceous',
+  badge:'68 Million Years Ago',
+  color:'#4060c0',
+  sub:'The Apex Predator of All Time',
+  desc:'Tyrannosaurus rex was the product of 80 million years of tyrannosaur evolution — and it was extraordinary. Standing 4 meters at the hip, stretching 12 meters in length, and weighing up to 9 metric tons, it had the most powerful bite of any land animal ever measured: 6 tonnes of force at the back teeth, enough to crunch through bone. Its vision was likely better than an eagle — binocular, forward-facing, with exceptional depth perception. Bone growth records show it grew at nearly 2 kilograms per day in its teenage years. It was warm-blooded, intelligent for a dinosaur, and is the best-studied large predator in the history of paleontology.',
+  facts:[
+    'T. rex bite force has been measured at 6 tonnes — the strongest of any land animal ever',
+    'Growth ring analysis of bones shows juveniles grew at nearly 2 kg/day in their teenage growth burst',
+    'Sue, the largest known T. rex specimen (Field Museum, Chicago), is 12.3 m long',
+    'T. rex existed for only about 2 million years before the K-Pg extinction — a short reign for such a giant'
+  ],
+  svg:`<svg viewBox="0 0 300 180" xmlns="http://www.w3.org/2000/svg"><rect width="300" height="180" fill="#08080e"/><path d="M0,140 Q30,120 60,130 Q90,140 100,125 Q130,108 160,118 Q190,128 220,115 Q250,102 300,120 L300,180 L0,180Z" fill="#0a1008"/><ellipse cx="150" cy="168" rx="95" ry="10" fill="#000" opacity=".5"/><g transform="translate(80,30)"><path d="M-30,85 Q-10,70 10,75" stroke="#4a5838" stroke-width="14" fill="none" stroke-linecap="round"/><path d="M-55,92 Q-42,82 -30,85" stroke="#3a4828" stroke-width="10" fill="none" stroke-linecap="round"/><ellipse cx="40" cy="75" rx="50" ry="28" fill="#4a5838"/><ellipse cx="15" cy="80" rx="20" ry="15" fill="#3a4828"/><path d="M82,58 Q95,40 100,20" stroke="#4a5838" stroke-width="18" fill="none" stroke-linecap="round"/><rect x="86" y="2" width="48" height="28" rx="5" fill="#4a5838"/><rect x="88" y="26" width="44" height="16" rx="4" fill="#3a4828"/><path d="M92,26 L96,22 L100,26 L104,22 L108,26 L112,22 L116,26 L120,22 L124,26" fill="#e8ddc0"/><circle cx="100" cy="12" r="7" fill="#0a0808"/><circle cx="100" cy="12" r="5" fill="#aa6600"/><circle cx="101" cy="12" r="2.5" fill="#000"/><circle cx="99" cy="10" r="1" fill="#fff" opacity=".4"/><ellipse cx="90" cy="8" rx="2.5" ry="2" fill="#2a3018"/><line x1="78" y1="65" x2="72" y2="80" stroke="#3a4828" stroke-width="5" stroke-linecap="round"/><line x1="72" y1="80" x2="68" y2="88" stroke="#3a4828" stroke-width="4" stroke-linecap="round"/><line x1="28" y1="100" x2="15" y2="130" stroke="#3a4828" stroke-width="16" stroke-linecap="round"/><line x1="15" y1="130" x2="18" y2="148" stroke="#2a3818" stroke-width="12" stroke-linecap="round"/><line x1="55" y1="100" x2="68" y2="130" stroke="#3a4828" stroke-width="16" stroke-linecap="round"/><line x1="68" y1="130" x2="65" y2="148" stroke="#2a3818" stroke-width="12" stroke-linecap="round"/></g></svg>`
+},
+{
+  id:'chicxulub', img:'https://commons.wikimedia.org/wiki/Special:FilePath/Chicxulub_Free-Air_Gravity_anomaly.png?width=600', mya:66, type:'extinction', icon:'☄️', pos:'above',
+  title:'Chicxulub Impact',
+  period:'K–Pg Boundary',
+  badge:'66 Million Years Ago',
+  color:'#ff2222',
+  sub:'The Day the Age of Dinosaurs Ended',
+  desc:'On a morning 66 million years ago, a rock 10 to 15 kilometers across slammed into shallow tropical water near what is now the Yucatan Peninsula of Mexico. The energy released was approximately 10 billion times that of the Hiroshima bomb. The impact vaporized everything within a thousand kilometers instantly. A wall of burning debris rained back down across the entire planet, briefly superheating the atmosphere to oven-like temperatures that ignited forest fires worldwide. The ejecta cloud blocked sunlight for years, collapsing photosynthesis. An estimated 75% of all species went extinct, including every non-avian dinosaur. The 180-kilometer crater — discovered only in the 1980s — was one of the great geological detective stories of the 20th century.',
+  facts:[
+    'The Chicxulub crater is 180 km in diameter and is buried beneath the Gulf of Mexico and Yucatan Peninsula',
+    'The impactor released energy equivalent to 10 billion Hiroshima bombs in under a second',
+    'A global layer of iridium (rare on Earth but common in asteroids) marks this exact moment in rock layers worldwide',
+    'Recovery to pre-extinction diversity levels took about 10 million years in the oceans'
+  ],
+  svg:`<svg viewBox="0 0 300 180" xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="imp" cx="40%" cy="70%"><stop offset="0%" stop-color="#fff"/><stop offset="10%" stop-color="#ffaa00"/><stop offset="30%" stop-color="#ff4400"/><stop offset="60%" stop-color="#880000"/><stop offset="100%" stop-color="#000"/></radialGradient></defs><rect width="300" height="180" fill="#000"/><circle cx="20" cy="15" r="1" fill="#fff" opacity=".8"/><circle cx="85" cy="8" r="1.5" fill="#fff" opacity=".7"/><circle cx="200" cy="20" r="1" fill="#fff" opacity=".6"/><circle cx="270" cy="12" r="1" fill="#fff" opacity=".8"/><path d="M230,5 L110,75" stroke="#ffcc44" stroke-width="4" opacity=".9"/><path d="M235,2 L115,72" stroke="rgba(255,220,100,.3)" stroke-width="8"/><circle cx="110" cy="75" r="14" fill="#8a6010"/><circle cx="106" cy="71" r="6" fill="#aa8020"/><circle cx="110" cy="75" r="30" fill="url(#imp)" opacity=".9"/><circle cx="110" cy="75" r="50" fill="none" stroke="#ff6600" stroke-width="2" opacity=".5"/><circle cx="110" cy="75" r="70" fill="none" stroke="#ff4400" stroke-width="1.5" opacity=".35"/><circle cx="110" cy="75" r="90" fill="none" stroke="#cc2200" stroke-width="1" opacity=".2"/><path d="M110,75 Q130,40 160,20" stroke="#ff8800" stroke-width="2" fill="none" opacity=".7"/><path d="M110,75 Q75,35 50,10" stroke="#ff6600" stroke-width="2" fill="none" opacity=".6"/><path d="M110,75 Q145,55 185,45" stroke="#ff4400" stroke-width="1.5" fill="none" opacity=".5"/><rect x="0" y="148" width="300" height="32" fill="#2a0800"/><path d="M0,148 Q75,138 150,142 Q225,146 300,140 L300,148 L0,148Z" fill="#880000" opacity=".8"/></svg>`
+},
+{
+  id:'birds', img:'https://commons.wikimedia.org/wiki/Special:FilePath/Bird_Diversity_2013.png?width=600', mya:64, type:'milestone', icon:'🐦', pos:'below', xOffset:60,
+  title:'Birds Inherit the Earth',
+  period:'Paleogene',
+  badge:'64 Million Years Ago',
+  color:'#8050c0',
+  sub:'Dinosaurs Conquer the Modern World',
+  desc:'The Chicxulub impact did not destroy all dinosaurs. One lineage survived: the avian dinosaurs — birds. Small, feathered, and able to live on seeds and insects that persisted through the long darkness, they clawed through the catastrophe and emerged into a world emptied of competitors. What followed was one of the most explosive radiations in vertebrate history. Within a few million years, birds had diversified into thousands of ecological niches: giant flightless runners, aquatic divers, aerial hunters. Today there are over 10,500 species of birds — more than all other tetrapod vertebrates combined. Every crow, sparrow, and hawk is a living dinosaur. The Age of Dinosaurs never truly ended.',
+  facts:[
+    'Birds are the direct descendants of maniraptoran theropod dinosaurs — they ARE dinosaurs by any scientific definition',
+    'There are approximately 10,500 living bird species — more than all mammal, reptile, and amphibian species combined',
+    'The common ancestor of modern birds survived by eating seeds, which can last through years of darkness',
+    'Early Paleogene birds like Gastornis stood 2 meters tall with a skull larger than a horse'
+  ],
+  svg:`<svg viewBox="0 0 300 180" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="palbg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0e0818"/><stop offset="60%" stop-color="#1a0a28"/><stop offset="100%" stop-color="#280a10"/></linearGradient></defs><rect width="300" height="180" fill="url(#palbg)"/><ellipse cx="150" cy="180" rx="180" ry="80" fill="#cc4400" opacity=".15"/><ellipse cx="150" cy="180" rx="100" ry="50" fill="#ff8800" opacity=".1"/><path d="M0,155 Q25,145 50,150 Q75,155 80,140 Q90,125 100,138 Q130,155 155,135 Q175,118 205,128 Q235,138 265,125 Q280,118 300,130 L300,180 L0,180Z" fill="#0a1a08"/><g transform="translate(55,65)"><path d="M-20,0 Q-5,-12 0,-5 Q5,-12 20,0" fill="#8060b0" opacity=".85"/><ellipse cx="0" cy="2" rx="6" ry="3" fill="#6040a0"/><path d="M3,1 Q8,-3 10,-6" stroke="#6040a0" stroke-width="2.5" fill="none" stroke-linecap="round"/><ellipse cx="11" cy="-7" rx="4" ry="2.5" fill="#6040a0"/></g><g transform="translate(100,50)"><path d="M-18,0 Q-4,-10 0,-4 Q4,-10 18,0" fill="#7050a0" opacity=".8"/><ellipse cx="0" cy="2" rx="5" ry="2.5" fill="#5a3890"/><path d="M2,1 Q7,-2 9,-5" stroke="#5a3890" stroke-width="2" fill="none" stroke-linecap="round"/></g><g transform="translate(150,35)"><path d="M-22,0 Q-6,-14 0,-6 Q6,-14 22,0" fill="#9070c0" opacity=".9"/><ellipse cx="0" cy="2" rx="7" ry="3.5" fill="#7050b0"/><path d="M4,1 Q10,-4 13,-8" stroke="#7050b0" stroke-width="3" fill="none" stroke-linecap="round"/><ellipse cx="14" cy="-9" rx="5" ry="3" fill="#7050b0"/></g><g transform="translate(200,50)"><path d="M-18,0 Q-5,-11 0,-4 Q5,-11 18,0" fill="#7050a0" opacity=".8"/><ellipse cx="0" cy="2" rx="5" ry="2.5" fill="#5a3890"/><path d="M2,1 Q7,-2 9,-5" stroke="#5a3890" stroke-width="2" fill="none" stroke-linecap="round"/></g><g transform="translate(245,65)"><path d="M-16,0 Q-4,-10 0,-4 Q4,-10 16,0" fill="#6040a0" opacity=".75"/><ellipse cx="0" cy="2" rx="4.5" ry="2.5" fill="#5030a0"/></g><path d="M70,100 Q78,95 80,98 Q82,95 90,100" stroke="#504880" stroke-width="1.5" fill="none"/><path d="M200,90 Q207,85 210,88 Q213,85 220,90" stroke="#504880" stroke-width="1.5" fill="none"/><text x="150" y="148" text-anchor="middle" font-size="9" fill="rgba(160,120,220,.6)" font-style="italic" letter-spacing="1">10,500 species fly today</text></svg>`
+}
+];
+
+// Build period bands
+const bandsEl = document.getElementById('period-bands');
+PERIODS.forEach(p => {
+  const x = xPos(p.start);
+  const w = (p.start - p.end) * PX_PER_MYA;
+  const div = document.createElement('div');
+  div.className = 'period-band';
+  div.style.cssText = `left:${x}px;width:${w}px;background:${p.color};`;
+  div.innerHTML = `<span class="period-label" style="color:${p.text}">${p.name}</span><div class="period-rule"></div>`;
+  bandsEl.appendChild(div);
+});
+
+// Build ruler ticks
+const ruler = document.getElementById('ruler');
+for (let mya = 250; mya >= 55; mya -= 10) {
+  const x = xPos(mya);
+  const tick = document.createElement('div');
+  tick.className = 'ruler-tick';
+  tick.style.left = x + 'px';
+  tick.innerHTML = `<span>${mya}</span>`;
+  ruler.appendChild(tick);
+}
+
+// Build event nodes
+const container = document.getElementById('events-container');
+EVENTS.forEach(e => {
+  const x = xPos(e.mya) + (e.xOffset || 0);
+  const div = document.createElement('div');
+  div.className = `evt-node ${e.pos}`;
+  div.style.left = x + 'px';
+  div.innerHTML = `
+    <div class="node-circle ${e.type}" style="background:${e.color}20;border-color:${e.color}60">
+      <span>${e.icon}</span>
+    </div>
+    <div class="evt-label">${e.title}</div>`;
+  div.onclick = () => openModal(e);
+  container.appendChild(div);
+});
+
+// Modal
+function openModal(e) {
+  document.getElementById('m-icon').style.background = e.color + '25';
+  document.getElementById('m-icon').innerHTML = `<span style="font-size:1.8rem">${e.icon}</span>`;
+  document.getElementById('m-badge').textContent = e.badge;
+  document.getElementById('m-badge').style.background = e.color + '20';
+  document.getElementById('m-badge').style.color = e.color;
+  document.getElementById('m-badge').style.borderColor = e.color + '50';
+  document.getElementById('m-title').textContent = e.title;
+  document.getElementById('m-sub').textContent = e.sub;
+  const mImg=document.getElementById('m-img');mImg.src=e.img||'';mImg.alt=e.title;document.getElementById('m-img-wrap').style.display=e.img?'':'none';
+  document.getElementById('m-desc').textContent = e.desc;
+  const factsEl = document.getElementById('m-facts');
+  factsEl.innerHTML = e.facts.map(f => `<div class="fact-item">${f}</div>`).join('');
+  window._detailUrl = 'dinosaur-detail.html#' + (e.id || '');
+  document.getElementById('modal-bg').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal(evt) {
+  if (!evt || evt.target === document.getElementById('modal-bg') || evt.currentTarget.id === 'modal-close') {
+    document.getElementById('modal-bg').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+}
+
+function scrollToMya(mya, btn) {
+  const x = xPos(mya);
+  const outer = document.getElementById('timeline-outer');
+  outer.scrollTo({ left: Math.max(0, x - outer.clientWidth / 4), behavior: 'smooth' });
+  document.querySelectorAll('.era-tab').forEach(t => t.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+}
+
+// Drag scroll
+const outer = document.getElementById('timeline-outer');
+let isDown = false, startX, scrollLeft;
+outer.addEventListener('mousedown', e => { isDown = true; startX = e.pageX - outer.offsetLeft; scrollLeft = outer.scrollLeft; outer.style.cursor='grabbing'; });
+outer.addEventListener('mouseleave', () => { isDown = false; outer.style.cursor='grab'; });
+outer.addEventListener('mouseup', () => { isDown = false; outer.style.cursor='grab'; });
+outer.addEventListener('mousemove', e => { if(!isDown) return; e.preventDefault(); const x = e.pageX - outer.offsetLeft; outer.scrollLeft = scrollLeft - (x - startX); });
+
+setTimeout(() => { const h = document.getElementById('scroll-hint'); if(h) h.remove(); }, 4500);
+
+// Mobile: attach touchend to detail button so iOS/Android can't swallow the tap
+const detailBtn = document.getElementById('m-detail-link');
+detailBtn.addEventListener('click', function(e) {
+  e.stopPropagation();
+  if (window._detailUrl) window.location.href = window._detailUrl;
+});
+detailBtn.addEventListener('touchend', function(e) {
+  e.stopPropagation();
+  e.preventDefault();
+  if (window._detailUrl) window.location.href = window._detailUrl;
+}, {passive: false});
+</script>
+</body>
+</html>

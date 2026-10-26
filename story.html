@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Rise & Fall of the Dinosaurs</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#060811;--gold:#d4a843;--gold2:#f0c060;
+  --text:#e8e0d0;--muted:#8899aa;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;overflow-x:hidden}
+
+/* ── HERO ── */
+.hero{
+  min-height:100vh;display:flex;flex-direction:column;justify-content:flex-end;
+  position:relative;overflow:hidden;
+}
+.hero-img{
+  position:absolute;inset:0;width:100%;height:100%;
+  object-fit:cover;object-position:center top;
+  filter:brightness(.45) saturate(.7);
+}
+.hero-grad{
+  position:absolute;inset:0;
+  background:linear-gradient(0deg,#060811 0%,rgba(6,8,17,.5) 50%,transparent 100%);
+}
+.hero-content{position:relative;padding:40px 24px 48px;text-align:center}
+.hero-eyebrow{
+  font-size:.65rem;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--gold);margin-bottom:16px;opacity:.9;
+}
+.hero h1{
+  font-size:clamp(2rem,8vw,3.6rem);font-weight:800;line-height:1.08;
+  letter-spacing:-.01em;margin-bottom:16px;
+}
+.hero h1 em{font-style:normal;color:var(--gold2)}
+.hero-sub{font-size:.9rem;color:var(--muted);line-height:1.6;max-width:340px;margin:0 auto 36px}
+.scroll-cue{
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+  animation:bounce 2.4s ease-in-out infinite;
+}
+.scroll-cue svg{width:20px;height:20px;stroke:var(--gold);fill:none;stroke-width:2}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
+
+/* ── CHAPTER SECTIONS ── */
+.chapter{
+  min-height:100vh;display:flex;flex-direction:column;justify-content:center;
+  position:relative;overflow:hidden;
+}
+.ch-img{
+  position:absolute;inset:0;width:100%;height:100%;
+  object-fit:cover;object-position:center;
+  filter:brightness(.35) saturate(.65);
+  transition:transform 8s ease;
+}
+.chapter:hover .ch-img{transform:scale(1.03)}
+.ch-grad{
+  position:absolute;inset:0;
+  background:linear-gradient(160deg,rgba(6,8,17,.7) 0%,rgba(6,8,17,.3) 60%,rgba(6,8,17,.8) 100%);
+}
+.ch-content{
+  position:relative;padding:60px 24px;max-width:520px;
+  opacity:0;transform:translateY(30px);transition:opacity .8s ease,transform .8s ease;
+}
+.ch-content.visible{opacity:1;transform:translateY(0)}
+.ch-num{
+  font-size:.6rem;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--gold);margin-bottom:12px;display:flex;align-items:center;gap:10px;
+}
+.ch-num::after{content:'';flex:1;height:1px;background:rgba(212,168,67,.3);max-width:60px}
+.ch-era{
+  font-size:.72rem;color:var(--muted);letter-spacing:.08em;
+  text-transform:uppercase;margin-bottom:8px;
+}
+.ch-content h2{
+  font-size:clamp(1.6rem,6vw,2.4rem);font-weight:800;
+  line-height:1.1;margin-bottom:18px;
+}
+.ch-content p{
+  font-size:.88rem;line-height:1.75;color:rgba(232,224,208,.85);margin-bottom:12px;
+}
+.ch-fact{
+  margin-top:24px;padding:16px 20px;
+  background:rgba(212,168,67,.07);border-left:3px solid var(--gold);
+  border-radius:0 8px 8px 0;
+  font-size:.78rem;line-height:1.6;color:rgba(232,224,208,.8);
+  font-style:italic;
+}
+
+/* ── TRANSITION DIVIDER ── */
+.divider{
+  height:120px;display:flex;align-items:center;justify-content:center;
+  background:var(--bg);position:relative;
+}
+.divider::before{
+  content:'';position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:1px;height:80px;background:linear-gradient(180deg,transparent,rgba(212,168,67,.4),transparent);
+}
+.divider-dot{
+  width:8px;height:8px;border-radius:50%;background:var(--gold);
+  box-shadow:0 0 12px var(--gold);z-index:1;
+}
+
+/* ── EXTINCTION SECTION (special full dark) ── */
+.extinction-section{
+  min-height:100vh;display:flex;flex-direction:column;justify-content:center;
+  position:relative;overflow:hidden;background:#000;
+}
+.extinction-section .ch-img{filter:brightness(.2) saturate(.3)}
+.extinction-section .ch-grad{
+  background:linear-gradient(180deg,rgba(0,0,0,.8) 0%,rgba(20,5,5,.5) 50%,rgba(0,0,0,.9) 100%);
+}
+.extinction-section h2{color:#ff6644}
+.extinction-section .ch-num{color:#ff6644}
+.extinction-section .ch-num::after{background:rgba(255,100,68,.3)}
+.extinction-section .ch-fact{border-left-color:#ff6644;background:rgba(255,100,68,.06)}
+
+/* ── LEGACY SECTION ── */
+.legacy-section{
+  min-height:60vh;display:flex;flex-direction:column;justify-content:center;
+  position:relative;overflow:hidden;background:linear-gradient(180deg,#060811,#071210);
+}
+.legacy-section .ch-img{filter:brightness(.4) saturate(.8) hue-rotate(10deg)}
+
+/* ── CTA ── */
+.cta-section{
+  padding:80px 24px;text-align:center;
+  background:linear-gradient(180deg,var(--bg) 0%,#0a0f1e 100%);
+}
+.cta-section h2{font-size:1.6rem;font-weight:800;margin-bottom:12px}
+.cta-section p{font-size:.88rem;color:var(--muted);margin-bottom:32px;max-width:300px;margin-left:auto;margin-right:auto}
+.cta-btn{
+  display:inline-flex;align-items:center;gap:10px;
+  padding:16px 32px;background:var(--gold);border-radius:12px;
+  color:#07091a;font-size:.9rem;font-weight:800;letter-spacing:.04em;
+  text-decoration:none;box-shadow:0 4px 24px rgba(212,168,67,.35);
+  transition:.2s;
+}
+.cta-btn:hover{background:var(--gold2);box-shadow:0 6px 32px rgba(212,168,67,.5);transform:translateY(-2px)}
+.cta-btn svg{width:18px;height:18px;fill:none;stroke:#07091a;stroke-width:2.5}
+
+/* ── PROGRESS BAR ── */
+#progress{
+  position:fixed;top:0;left:0;height:2px;
+  background:linear-gradient(90deg,var(--gold),var(--gold2));
+  z-index:1000;width:0%;transition:width .1s linear;
+}
+</style>
+</head>
+<body>
+
+<div id="progress"></div>
+
+<!-- ══ HERO ══ -->
+<section class="hero">
+  <img class="hero-img"
+    src="https://commons.wikimedia.org/wiki/Special:FilePath/Archaeopteryx_lithographica_(Berlin_specimen).jpg"
+    alt="Archaeopteryx fossil — the bridge between dinosaurs and birds">
+  <div class="hero-grad"></div>
+  <div class="hero-content">
+    <h1>The <em>Rise</em> &<br><em>Fall</em> of the<br>Dinosaurs</h1>
+    <p class="hero-sub">165 million years. One family of creatures. The greatest story Earth ever told.</p>
+    <div class="scroll-cue">
+      <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+      Scroll to begin
+    </div>
+  </div>
+</section>
+
+<div class="divider"><div class="divider-dot"></div></div>
+
+<!-- ══ CH 1: THE WORLD BEFORE ══ -->
+<section class="chapter">
+  <img class="ch-img"
+    src="https://commons.wikimedia.org/wiki/Special:FilePath/Petrified_Forest_National_Park_02.jpg"
+    alt="Ancient red rock landscape — Permian sediments">
+  <div class="ch-grad"></div>
+  <div class="ch-content">
+    <div class="ch-num">Before the Dinosaurs</div>
+    <div class="ch-era">252 Million Years Ago · The Permian Period</div>
+    <h2>A World We Would Not Recognize</h2>
+    <p>The continents were fused into a single landmass — Pangea. The forests belonged to conifers. The lakes teemed with creatures utterly unlike anything alive today: gorgonopsians, saber-toothed mammal cousins that ruled as apex predators. Stocky pareiasaurs. Fat dicynodonts rooting through the muck like pigs.</p>
+    <p>Dinosaurs did not exist. They hadn't been invented yet. But that was about to change — in the most violent way imaginable.</p>
+    <div class="ch-fact">"The cast of oddballs that ruled the world right before the dinosaurs."</div>
+  </div>
+</section>
+
+<div class="divider"><div class="divider-dot"></div></div>
+
+<!-- ══ CH 2: THE GREAT DYING ══ -->
+<section class="chapter extinction-section">
+  <img class="ch-img"
+    src="https://commons.wikimedia.org/wiki/Special:FilePath/Pahoeoe_fountain_original.jpg"
+    alt="Lava fountain — Kilauea volcano, Hawaii (USGS)">
+  <div class="ch-grad"></div>
+  <div class="ch-content">
+    <div class="ch-num">The End-Permian Extinction</div>
+    <div class="ch-era">252 Million Years Ago · The Great Dying</div>
+    <h2>The World Catches Fire</h2>
+    <p>Deep beneath Siberia, a hot spot ignited. For hundreds of thousands of years, cracks in the ground belched lava across an area the size of Western Europe. The sky filled with CO₂. The oceans acidified. 90% of all species on Earth perished.</p>
+    <p>It was the closest life ever came to complete obliteration. Paleontologists call it the Great Dying — the worst mass extinction in the history of our planet. The gorgonopsians, the pareiasaurs, the dicynodonts: gone.</p>
+    <div class="ch-fact">"The biggest episode of mass death in the history of our planet. Somewhere around 90 percent of all species disappeared."</div>
+  </div>
+</section>
+
+<div class="divider"><div class="divider-dot"></div></div>
+
+<!-- ══ CH 3: DAWN OF DINOSAURS ══ -->
+<section class="chapter">
+  <img class="ch-img"
+    src="https://commons.wikimedia.org/wiki/Special:FilePath/Chindesaurus_bryansmalli.jpg"
+    alt="Early Triassic dinosaur fossil">
+  <div class="ch-grad"></div>
+  <div class="ch-content">
+    <div class="ch-num">Chapter One · The Rise</div>
+    <div class="ch-era">230 Million Years Ago · The Triassic Period</div>
+    <h2>Small, Scrappy Survivors</h2>
+    <p>In the aftermath, the world was largely empty. Life rebuilt from the survivors — those few lineages tough enough to endure the apocalypse. Into this vacancy crept the first dinosaurs: small, bipedal, fast. Not lords of the Earth — not yet. Competitors, still fighting for a foothold.</p>
+    <p>They were the underdogs. Outnumbered by crocodile relatives and other reptiles who seemed better suited to the hot, arid Triassic world. But then — another extinction. And the dinosaurs were the ones still standing.</p>
+    <div class="ch-fact">"An empty world, an uncolonized frontier. Dinosaurs were about to make their entrance."</div>
+  </div>
+</section>
+
+<div class="divider"><div class="divider-dot"></div></div>
+
+<!-- ══ CH 4: JURASSIC GIANTS ══ -->
+<section class="chapter">
+  <img class="ch-img"
+    src="https://commons.wikimedia.org/wiki/Special:FilePath/Diplodocus_carnegii_whole_BW.jpg"
+    alt="Diplodocus carnegii skeleton">
+  <div class="ch-grad"></div>
+  <div class="ch-content">
+    <div class="ch-num">Chapters Two & Three · Dominance</div>
+    <div class="ch-era">200 – 145 Million Years Ago · The Jurassic Period</div>
+    <h2>Rulers of a Splitting World</h2>
+    <p>Pangea tore apart. As the continents drifted, jungles exploded where deserts had been. The dinosaurs seized the moment. Sauropods grew longer than any animal before or since — some reaching 30 meters, their necks sweeping through forest canopies like living cranes. Stegosaurus plated its back in bone. Allosaurus hunted in packs.</p>
+    <p>For 55 million years, the Jurassic was theirs.</p>
+    <div class="ch-fact">Diplodocus weighed 12–16 tonnes and may have cracked its tail like a bullwhip — a sonic boom used for defense or signaling.</div>
+  </div>
+</section>
+
+<div class="divider"><div class="divider-dot"></div></div>
+
+<!-- ══ CH 5: TYRANT KINGS ══ -->
+<section class="chapter">
+  <img class="ch-img"
+    src="https://commons.wikimedia.org/wiki/Special:FilePath/Sues_tRex_skull.jpg"
+    alt="Sue the T. rex skull at the Field Museum, Chicago">
+  <div class="ch-grad"></div>
+  <div class="ch-content">
+    <div class="ch-num">Chapters Five & Six · The Apex</div>
+    <div class="ch-era">80 – 66 Million Years Ago · Late Cretaceous</div>
+    <h2>The King of the Dinosaurs</h2>
+    <p>Tyrannosaurus rex was not just large. It had the most powerful bite of any land animal that ever lived — enough force to crush bone and swallow it for calcium. It could smell prey from kilometers away. It could hear low-frequency sounds across vast distances. It was purpose-built by evolution to be the apex of apex predators.</p>
+    <p>The Late Cretaceous was the golden age — more species, more diversity, more ecological complexity than at any point before. Dinosaurs had never been more dominant.</p>
+    <div class="ch-fact">"Sue" — the most complete T. rex ever found — lived to at least 28 years old and bore the scars of a hard life: broken ribs, infected jaw, worn teeth.</div>
+  </div>
+</section>
+
+<div class="divider"><div class="divider-dot"></div></div>
+
+<!-- ══ CH 6: THE END ══ -->
+<section class="chapter extinction-section">
+  <img class="ch-img"
+    src="https://commons.wikimedia.org/wiki/Special:FilePath/Chicxulub_impact_-_artist_impression.jpg"
+    alt="Artist impression of the Chicxulub asteroid impact, 66 million years ago">
+  <div class="ch-grad"></div>
+  <div class="ch-content">
+    <div class="ch-num">Chapter Nine · The Fall</div>
+    <div class="ch-era">66 Million Years Ago · End of the Cretaceous</div>
+    <h2>The Last Day</h2>
+    <p>A 10-kilometer asteroid struck the Yucatan Peninsula at roughly 20 km/s. The impact released more energy than a billion nuclear bombs. Within hours, superheated ejecta rained back from the sky and set the world on fire. Within weeks, a dust shroud blocked the sun. Plants died. Herbivores starved. Then the carnivores.</p>
+    <p>Three quarters of all species on Earth were gone within the year. The non-avian dinosaurs — those that hadn't already become birds — were finished. After 165 million years of dominance, it was over.</p>
+    <div class="ch-fact">"They became supremely well adapted to their environments, but in the end, most of them went extinct when they couldn't cope with a sudden crisis. No doubt there is a lesson there for us."</div>
+  </div>
+</section>
+
+<div class="divider"><div class="divider-dot"></div></div>
+
+<!-- ══ CH 7: LEGACY ══ -->
+<section class="chapter legacy-section">
+  <img class="ch-img"
+    src="https://commons.wikimedia.org/wiki/Special:FilePath/Archaeopteryx_lithographica_(Berlin_specimen).jpg"
+    alt="Archaeopteryx lithographica — Berlin specimen, the iconic dinosaur-bird fossil">
+  <div class="ch-grad"></div>
+  <div class="ch-content">
+    <div class="ch-num">Chapter Eight · The Twist</div>
+    <div class="ch-era">150 Million Years Ago → Today</div>
+    <h2>They Never Really Left</h2>
+    <p>While the non-avian dinosaurs were meeting their end, one lineage had already escaped into the sky. Birds are dinosaurs — not metaphorically, but biologically. Feathered, warm-blooded theropods that took flight in the Jurassic and outlasted the asteroid that killed their kin.</p>
+    <p>There are roughly 10,000 species of living dinosaurs on Earth today. Every sparrow, every hummingbird, every crow is a dinosaur. The Age of Dinosaurs never ended. We just stopped noticing.</p>
+    <div class="ch-fact">Archaeopteryx — found in Jurassic limestone in Bavaria — had feathers, wishbone, and wings, but also teeth, clawed hands, and a long bony tail. The missing link, fossilized.</div>
+  </div>
+</section>
+
+<!-- ══ CTA ══ -->
+<section class="cta-section">
+  <h2>Explore the Full Timeline</h2>
+  <p>252 million years of evolution, extinction, and survival — one dinosaur at a time.</p>
+  <a href="/index.html" class="cta-btn">
+    Enter the Timeline
+    <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+  </a>
+</section>
+
+<script>
+// Progress bar
+window.addEventListener('scroll',()=>{
+  const h=document.documentElement;
+  const pct=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100;
+  document.getElementById('progress').style.width=pct+'%';
+});
+
+// IntersectionObserver for fade-in
+const obs=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting)e.target.classList.add('visible');
+  });
+},{threshold:.15});
+document.querySelectorAll('.ch-content').forEach(el=>obs.observe(el));
+</script>
+</body>
+</html>
